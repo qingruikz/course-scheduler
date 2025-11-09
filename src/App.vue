@@ -10,7 +10,9 @@
       <p class="subtitle">
         学期と授業の頻度を選択して、授業日程を自動生成します。
       </p>
-      <p class="calendar-info" v-if="createdAt">学年暦: {{ createdAt }}</p>
+      <p class="calendar-info" v-if="createdAt">
+        学年暦更新日: {{ createdAt }}
+      </p>
     </header>
 
     <div class="main-container">
