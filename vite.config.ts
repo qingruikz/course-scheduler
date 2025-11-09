@@ -18,6 +18,7 @@ export default defineConfig(({ command }) => {
     },
     ...(isSingleFile
       ? {
+          publicDir: false, // シングルファイルビルド時はpublicフォルダをコピーしない
           build: {
             outDir: "dist-single",
             cssCodeSplit: false,
