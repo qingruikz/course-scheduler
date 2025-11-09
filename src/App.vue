@@ -1,16 +1,36 @@
 <template>
   <div class="app">
     <header class="header">
-      <h1>大学授業スケジュールジェネレーター</h1>
+      <div class="header-content">
+        <h1>大学授業スケジュールジェネレーター</h1>
+        <span class="academic-year" v-if="selectedYear">
+          {{ formatAcademicYear(selectedYear) }}
+        </span>
+      </div>
       <p class="subtitle">
         学期と授業の頻度を選択して、授業日程を自動生成します。
       </p>
+      <p class="calendar-info" v-if="createdAt">学年暦: {{ createdAt }}</p>
     </header>
 
     <div class="main-container">
       <!-- 左側: 条件設定 -->
       <div class="left-panel">
         <h2>条件設定</h2>
+
+        <div class="form-group">
+          <label for="year">年度</label>
+          <select
+            id="year"
+            v-model="selectedYear"
+            class="form-control"
+            @change="onYearChange"
+          >
+            <option v-for="year in availableYears" :key="year" :value="year">
+              {{ formatAcademicYear(year) }}
+            </option>
+          </select>
+        </div>
 
         <div class="form-group">
           <label for="semester">学期</label>
@@ -307,6 +327,7 @@
 import { ref, onMounted, watch, computed, onUnmounted } from "vue";
 import type {
   CalendarData,
+  YearData,
   ScheduleItem,
   SemesterOption,
   CourseDays,
@@ -322,7 +343,7 @@ import {
   exportToJSON,
 } from "./utils/export";
 import CalendarView from "./components/CalendarView.vue";
-import calendarDataJson from "./calendar_data.json";
+import { formatAcademicYear } from "./utils/japaneseEra";
 
 const dayNames = [
   "日曜日",
@@ -334,7 +355,12 @@ const dayNames = [
   "土曜日",
 ];
 
+const currentYear = new Date().getFullYear();
+const selectedYear = ref<number>(currentYear);
 const calendarData = ref<CalendarData | null>(null);
+const currentYearData = ref<YearData | null>(null);
+const availableYears = ref<number[]>([]);
+const createdAt = ref<string>("");
 const selectedSemester = ref<SemesterOption>("前期");
 const selectedCourseDays = ref<CourseDays>(14);
 const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
@@ -365,21 +391,21 @@ const deliveryPopover = ref<{
 
 // 学期期間をcomputedプロパティとして定義（リアルタイム更新）
 const semesterPeriod = computed(() => {
-  if (!calendarData.value) return null;
+  if (!currentYearData.value) return null;
 
   // 選択された学期のキーを取得（マッピングがある場合は使用）
   let semesterKey: string = selectedSemester.value;
 
   // 直接キーが存在しない場合、マッピングを確認
-  if (!calendarData.value.semesters[semesterKey]) {
+  if (!currentYearData.value.semesters[semesterKey]) {
     // マッピングを使って変換を試みる
-    const mappedKey = calendarData.value.semester_mapping?.[semesterKey];
+    const mappedKey = currentYearData.value.semester_mapping?.[semesterKey];
     if (mappedKey) {
       semesterKey = mappedKey;
     }
   }
 
-  const period = calendarData.value.semesters[semesterKey];
+  const period = currentYearData.value.semesters[semesterKey];
   if (period) {
     return {
       start: period[0],
@@ -389,28 +415,75 @@ const semesterPeriod = computed(() => {
   return null;
 });
 
-onMounted(async () => {
+async function loadCalendarData() {
   try {
-    // まず、直接インポートしたJSONデータを使用（単一HTMLファイルでも動作）
-    calendarData.value = calendarDataJson as unknown as CalendarData;
-  } catch (error) {
-    console.error("Failed to load calendar data from import:", error);
-    // フォールバック: fetchで読み込む
+    // まず、srcフォルダから直接インポートを試す（ビルド時にバンドルされる）
     try {
+      const calendarDataJson = await import("./calendar_data.json");
+      calendarData.value = calendarDataJson.default as unknown as CalendarData;
+    } catch (importError) {
+      // インポートに失敗した場合、fetchで読み込む
+      console.log("Import failed, trying fetch...", importError);
+
+      // publicフォルダから読み込む
       const response = await fetch("/calendar_data.json");
       if (response.ok) {
-        calendarData.value = await response.json();
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          calendarData.value = await response.json();
+        } else {
+          // JSONではない場合（HTMLエラーページなど）
+          throw new Error("Response is not JSON");
+        }
       } else {
         // 相対パスを試す
         const response2 = await fetch("./calendar_data.json");
         if (response2.ok) {
           calendarData.value = await response2.json();
+        } else {
+          throw new Error("Failed to fetch calendar data");
         }
       }
-    } catch (error2) {
-      console.error("Failed to load calendar data from fetch:", error2);
     }
+
+    if (calendarData.value) {
+      // 利用可能な年度を計算
+      availableYears.value = Object.keys(calendarData.value.years)
+        .map((y) => parseInt(y))
+        .sort((a, b) => a - b);
+
+      // 作成日を取得
+      createdAt.value = calendarData.value.created_at || "";
+
+      // デフォルト年度のデータを設定
+      updateCurrentYearData(selectedYear.value);
+    } else {
+      console.error("Calendar data is null");
+    }
+  } catch (error) {
+    console.error("Failed to load calendar data:", error);
+    calendarData.value = null;
   }
+}
+
+function updateCurrentYearData(year: number) {
+  if (calendarData.value && calendarData.value.years[year.toString()]) {
+    const yearData = calendarData.value.years[year.toString()];
+    currentYearData.value = yearData ?? null;
+  } else {
+    currentYearData.value = null;
+  }
+}
+
+function onYearChange() {
+  updateCurrentYearData(selectedYear.value);
+  // 年度が変わったらスケジュールをクリア
+  schedule.value = [];
+}
+
+onMounted(async () => {
+  // 統合されたcalendar_data.jsonを読み込む
+  await loadCalendarData();
 
   // ドロップダウンメニューの外部クリックを検出
   document.addEventListener("click", handleClickOutside);
@@ -473,13 +546,13 @@ function toggleDay(index: DayOfWeek) {
 
 function generateSchedule() {
   console.log("generateSchedule called");
-  console.log("calendarData:", calendarData.value);
+  console.log("currentYearData:", currentYearData.value);
   console.log("selectedSemester:", selectedSemester.value);
   console.log("selectedCourseDays:", selectedCourseDays.value);
   console.log("selectedClassesPerWeek:", selectedClassesPerWeek.value);
   console.log("selectedDaysOfWeek:", selectedDaysOfWeek.value);
 
-  if (!calendarData.value) {
+  if (!currentYearData.value) {
     alert("学年暦データの読み込みに失敗しました。");
     return;
   }
@@ -510,8 +583,13 @@ function generateSchedule() {
   console.log("dayOfWeekParam:", dayOfWeekParam);
 
   try {
+    if (!currentYearData.value) {
+      alert("年度データが読み込まれていません。");
+      return;
+    }
+
     const result = generateScheduleUtil(
-      calendarData.value,
+      currentYearData.value,
       selectedSemester.value,
       selectedCourseDays.value,
       selectedClassesPerWeek.value,
@@ -625,15 +703,36 @@ function hideDeliveryPopover() {
   margin-bottom: 30px;
 }
 
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
 .header h1 {
   font-size: 28px;
   color: #333;
-  margin-bottom: 10px;
+  margin: 0;
+}
+
+.academic-year {
+  font-size: 18px;
+  color: #666;
+  font-weight: normal;
 }
 
 .subtitle {
   font-size: 14px;
   color: #666;
+  margin: 5px 0;
+}
+
+.calendar-info {
+  font-size: 12px;
+  color: #888;
+  margin: 5px 0 0 0;
 }
 
 .main-container {

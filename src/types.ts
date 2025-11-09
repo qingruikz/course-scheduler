@@ -1,4 +1,23 @@
+export interface YearData {
+  year: number;
+  semesters: {
+    [key: string]: [string, string];
+  };
+  vacations: Vacation[];
+  semester_mapping: {
+    [key: string]: string;
+  };
+}
+
 export interface CalendarData {
+  created_at: string;
+  years: {
+    [year: string]: YearData;
+  };
+}
+
+// 後方互換性のため、単一年度のデータ構造も保持
+export interface SingleYearCalendarData {
   year: number;
   semesters: {
     [key: string]: [string, string];

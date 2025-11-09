@@ -1,5 +1,5 @@
 import type {
-  CalendarData,
+  YearData,
   ScheduleItem,
   SemesterOption,
   CourseDays,
@@ -48,11 +48,11 @@ export function getDayOfWeek(date: Date): DayOfWeek {
 
 export function isHoliday(
   date: Date,
-  calendarData: CalendarData
+  yearData: YearData
 ): { isHoliday: boolean; reason?: string } {
   const dateStr = formatDateShort(date);
 
-  for (const vacation of calendarData.vacations) {
+  for (const vacation of yearData.vacations) {
     if (vacation.dates.includes(dateStr)) {
       return { isHoliday: true, reason: vacation.name };
     }
@@ -62,7 +62,7 @@ export function isHoliday(
 }
 
 export function generateSchedule(
-  calendarData: CalendarData,
+  yearData: YearData,
   semester: SemesterOption,
   courseDays: CourseDays,
   classesPerWeek: ClassesPerWeek,
@@ -73,15 +73,15 @@ export function generateSchedule(
   let semesterKey: string = semester;
 
   // 直接キーが存在しない場合、マッピングを確認
-  if (!calendarData.semesters[semesterKey]) {
+  if (!yearData.semesters[semesterKey]) {
     // マッピングを使って変換を試みる
-    const mappedKey = calendarData.semester_mapping?.[semesterKey];
+    const mappedKey = yearData.semester_mapping?.[semesterKey];
     if (mappedKey) {
       semesterKey = mappedKey;
     }
   }
 
-  const semesterPeriod = calendarData.semesters[semesterKey];
+  const semesterPeriod = yearData.semesters[semesterKey];
   if (!semesterPeriod) {
     console.warn(`学期期間が見つかりません: ${semester} -> ${semesterKey}`);
     return [];
@@ -129,7 +129,7 @@ export function generateSchedule(
       continue;
     }
 
-    const holidayInfo = isHoliday(currentDate, calendarData);
+    const holidayInfo = isHoliday(currentDate, yearData);
     const currentDayOfWeek = getDayOfWeek(currentDate);
     const dayOfWeekName = DAY_NAMES_FULL[currentDayOfWeek] ?? "不明";
 

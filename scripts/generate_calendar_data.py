@@ -1,11 +1,18 @@
 """
 学年暦データをJSONに変換するスクリプト
+使用方法: python generate_calendar_data.py [年度]
+例: python generate_calendar_data.py 2025
 """
 
 import json
+import sys
 from datetime import datetime, timedelta
 
-YEAR = 2025
+# コマンドライン引数から年度を取得、デフォルトは2025
+if len(sys.argv) > 1:
+    YEAR = int(sys.argv[1])
+else:
+    YEAR = 2025
 
 
 def date_range(start_date, end_date):
@@ -144,10 +151,11 @@ def main():
         data["semesters"]["4学期"][1],
     ]
 
-    with open("public/calendar_data.json", "w", encoding="utf-8") as f:
+    output_file = f"public/calendar_data_{YEAR}.json"
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-    print("calendar_data.json を生成しました。")
+    print(f"calendar_data_{YEAR}.json を生成しました。")
 
 
 if __name__ == "__main__":
