@@ -226,6 +226,7 @@ import {
   exportToJSON,
 } from "./utils/export";
 import CalendarView from "./components/CalendarView.vue";
+import calendarDataJson from "./calendar_data.json";
 
 const dayNames = [
   "日曜日",
@@ -274,10 +275,25 @@ const semesterPeriod = computed(() => {
 
 onMounted(async () => {
   try {
-    const response = await fetch("/calendar_data.json");
-    calendarData.value = await response.json();
+    // まず、直接インポートしたJSONデータを使用（単一HTMLファイルでも動作）
+    calendarData.value = calendarDataJson as unknown as CalendarData;
   } catch (error) {
-    console.error("Failed to load calendar data:", error);
+    console.error("Failed to load calendar data from import:", error);
+    // フォールバック: fetchで読み込む
+    try {
+      const response = await fetch("/calendar_data.json");
+      if (response.ok) {
+        calendarData.value = await response.json();
+      } else {
+        // 相対パスを試す
+        const response2 = await fetch("./calendar_data.json");
+        if (response2.ok) {
+          calendarData.value = await response2.json();
+        }
+      }
+    } catch (error2) {
+      console.error("Failed to load calendar data from fetch:", error2);
+    }
   }
 
   // ドロップダウンメニューの外部クリックを検出
