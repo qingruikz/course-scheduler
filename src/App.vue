@@ -1,11 +1,35 @@
 <template>
   <div class="app">
     <header class="header">
+      <button
+        class="calendar-icon-button-header"
+        @click="showAcademicCalendar"
+        title="学年暦を表示"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </button>
       <div class="header-content">
-        <h1>大学授業スケジュールジェネレーター</h1>
-        <span class="academic-year" v-if="selectedYear">
-          {{ formatAcademicYear(selectedYear) }}
-        </span>
+        <div class="header-left">
+          <h1>大学授業スケジュールジェネレーター</h1>
+          <span class="academic-year" v-if="selectedYear">
+            {{ formatAcademicYear(selectedYear) }}
+          </span>
+        </div>
       </div>
       <p class="subtitle">
         学期と授業の頻度を選択して、授業日程を自動生成します。
@@ -306,7 +330,12 @@
           </div>
 
           <div class="calendar-section">
-            <CalendarView v-if="schedule.length > 0" :schedule="schedule" />
+            <CalendarView
+              v-if="schedule.length > 0"
+              :schedule="schedule"
+              :yearData="currentYearData"
+              :year="selectedYear"
+            />
           </div>
         </div>
       </div>
@@ -322,6 +351,13 @@
     >
       {{ deliveryPopover.text }}
     </div>
+    <!-- 学年暦モーダル -->
+    <AcademicCalendarModal
+      :visible="showAcademicCalendarModal"
+      :year="selectedYear"
+      :yearData="currentYearData"
+      @close="closeAcademicCalendarModal"
+    />
   </div>
 </template>
 
@@ -345,6 +381,7 @@ import {
   exportToJSON,
 } from "./utils/export";
 import CalendarView from "./components/CalendarView.vue";
+import AcademicCalendarModal from "./components/AcademicCalendarModal.vue";
 import { formatAcademicYear } from "./utils/japaneseEra";
 
 const dayNames = [
@@ -363,6 +400,7 @@ const calendarData = ref<CalendarData | null>(null);
 const currentYearData = ref<YearData | null>(null);
 const availableYears = ref<number[]>([]);
 const createdAt = ref<string>("");
+const showAcademicCalendarModal = ref(false);
 const selectedSemester = ref<SemesterOption>("前期");
 const selectedCourseDays = ref<CourseDays>(14);
 const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
@@ -481,6 +519,14 @@ function onYearChange() {
   updateCurrentYearData(selectedYear.value);
   // 年度が変わったらスケジュールをクリア
   schedule.value = [];
+}
+
+function showAcademicCalendar() {
+  showAcademicCalendarModal.value = true;
+}
+
+function closeAcademicCalendarModal() {
+  showAcademicCalendarModal.value = false;
 }
 
 onMounted(async () => {
@@ -701,6 +747,7 @@ function hideDeliveryPopover() {
 }
 
 .header {
+  position: relative;
   text-align: center;
   margin-bottom: 30px;
 }
@@ -723,6 +770,35 @@ function hideDeliveryPopover() {
   font-size: 18px;
   color: #666;
   font-weight: normal;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.calendar-icon-button-header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0066cc;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  z-index: 10;
+}
+
+.calendar-icon-button-header:hover {
+  background-color: #f0f0f0;
 }
 
 .subtitle {

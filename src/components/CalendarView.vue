@@ -125,7 +125,7 @@ const props = defineProps<{
 }>();
 
 const calendarPdfUrl =
-  "https://www.musashino-u.ac.jp/student-life/令和8年度%20武蔵野大学学年暦.pdf";
+  "https://www.musashino-u.ac.jp/student-life/campus_life/calendar.html";
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -268,6 +268,26 @@ const displayedMonths = computed(() => {
 .calendar-link {
   margin-bottom: 10px;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.calendar-icon-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0066cc;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.calendar-icon-button:hover {
+  background-color: #f0f0f0;
 }
 
 .calendar-link a {
