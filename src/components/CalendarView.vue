@@ -28,9 +28,86 @@
               { highlighted: day.isHighlighted },
               { holiday: day.isHoliday },
             ]"
+            :title="
+              day.scheduleInfo
+                ? day.scheduleInfo.isHoliday
+                  ? `（休講）${day.scheduleInfo.holidayReason}`
+                  : `第${day.scheduleInfo.classNumber}回 ${
+                      day.scheduleInfo.deliveryMode === 'online'
+                        ? 'オンライン'
+                        : '対面'
+                    }`
+                : ''
+            "
           >
-            <span v-if="day.day > 0" class="day-number">{{ day.day }}</span>
+            <div v-if="day.day > 0" class="day-content">
+              <span class="day-number">{{ day.day }}</span>
+              <div v-if="day.scheduleInfo" class="day-info">
+                <div v-if="day.scheduleInfo.isHoliday" class="day-holiday-text">
+                  休講
+                </div>
+                <div v-else class="day-class-info">
+                  <svg
+                    v-if="day.scheduleInfo.deliveryMode === 'online'"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="day-delivery-icon"
+                  >
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                    <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                    <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                  </svg>
+                  <svg
+                    v-else
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="day-delivery-icon"
+                  >
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                  </svg>
+                  <span class="day-class-number">{{
+                    day.scheduleInfo.classNumber
+                  }}</span>
+                </div>
+              </div>
+            </div>
             <span v-else class="day-number empty"></span>
+            <div v-if="day.scheduleInfo" class="popover">
+              <div class="popover-content">
+                <div class="popover-date">{{ day.scheduleInfo.dateStr }}</div>
+                <div v-if="day.scheduleInfo.isHoliday" class="popover-holiday">
+                  （休講）{{ day.scheduleInfo.holidayReason }}
+                </div>
+                <div v-else class="popover-class">
+                  <div>第{{ day.scheduleInfo.classNumber }}回</div>
+                  <div class="popover-delivery">
+                    {{
+                      day.scheduleInfo.deliveryMode === "online"
+                        ? "オンライン"
+                        : "対面"
+                    }}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -48,7 +125,7 @@ const props = defineProps<{
 }>();
 
 const calendarPdfUrl =
-  "https://www.musashino-u.ac.jp/student-life/%E4%BB%A4%E5%92%8C8%E5%B9%B4%E5%BA%A6%20%E6%AD%A6%E8%94%B5%E9%87%8E%E5%A4%A7%E5%AD%A6%E5%B9%B4%E6%9A%A6.pdf";
+  "https://www.musashino-u.ac.jp/student-life/令和8年度%20武蔵野大学学年暦.pdf";
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -62,6 +139,26 @@ const holidayDates = computed(() => {
       .filter((item) => item.isHoliday)
       .map((item) => formatDateShort(item.date))
   );
+});
+
+const holidayReasons = computed(() => {
+  const map = new Map<string, string>();
+  props.schedule
+    .filter((item) => item.isHoliday && item.holidayReason)
+    .forEach((item) => {
+      const dateStr = formatDateShort(item.date);
+      map.set(dateStr, item.holidayReason!);
+    });
+  return map;
+});
+
+const scheduleInfo = computed(() => {
+  const map = new Map<string, ScheduleItem>();
+  props.schedule.forEach((item) => {
+    const dateStr = formatDateShort(item.date);
+    map.set(dateStr, item);
+  });
+  return map;
 });
 
 const displayedMonths = computed(() => {
@@ -80,6 +177,8 @@ const displayedMonths = computed(() => {
       isCurrentMonth: boolean;
       isHighlighted: boolean;
       isHoliday: boolean;
+      holidayReason?: string;
+      scheduleInfo?: ScheduleItem;
     }>;
   }> = [];
 
@@ -103,6 +202,8 @@ const displayedMonths = computed(() => {
       isCurrentMonth: boolean;
       isHighlighted: boolean;
       isHoliday: boolean;
+      holidayReason?: string;
+      scheduleInfo?: ScheduleItem;
     }> = [];
 
     // 今月の日付のみを表示
@@ -120,11 +221,17 @@ const displayedMonths = computed(() => {
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
       const dateStr = formatDateShort(date);
+      const isHoliday = holidayDates.value.has(dateStr);
+      const info = scheduleInfo.value.get(dateStr);
       days.push({
         day,
         isCurrentMonth: true,
         isHighlighted: highlightedDates.value.has(dateStr),
-        isHoliday: holidayDates.value.has(dateStr),
+        isHoliday,
+        holidayReason: isHoliday
+          ? holidayReasons.value.get(dateStr)
+          : undefined,
+        scheduleInfo: info,
       });
     }
 
@@ -217,16 +324,26 @@ const displayedMonths = computed(() => {
 .calendar-day {
   aspect-ratio: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   font-size: 12px;
   cursor: default;
   min-height: 0;
-  padding: 4px 0;
+  padding: 6px 0;
   width: 20px;
-  height: 26px;
+  height: auto;
+  min-height: 50px;
   margin: 0 auto;
   box-sizing: border-box;
+}
+
+.day-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  gap: 2px;
 }
 
 .day-number {
@@ -235,9 +352,11 @@ const displayedMonths = computed(() => {
   justify-content: center;
   min-width: 15px;
   min-height: 15px;
+  height: 15px;
   padding: 2px 4px;
   border-radius: 3px;
   transition: all 0.2s;
+  line-height: 1;
 }
 
 .calendar-day.other-month {
@@ -262,5 +381,106 @@ const displayedMonths = computed(() => {
 .calendar-day.highlighted.holiday .day-number {
   background-color: #ff6666;
   color: white;
+}
+
+.calendar-day {
+  position: relative;
+}
+
+.day-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  font-size: 8px;
+  line-height: 1;
+  gap: 1px;
+}
+
+.day-class-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #000;
+}
+
+.day-delivery-icon {
+  color: #000;
+  flex-shrink: 0;
+}
+
+.day-class-number {
+  font-size: 8px;
+  color: #000;
+  white-space: nowrap;
+}
+
+.day-holiday-text {
+  font-size: 8px;
+  color: #cc0000;
+  white-space: nowrap;
+}
+
+.popover {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 5px;
+  padding: 0;
+  background-color: #333;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  min-width: 150px;
+}
+
+.popover-content {
+  padding: 8px 12px;
+}
+
+.popover-date {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.popover-holiday {
+  color: #ffcccc;
+}
+
+.popover-class {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.popover-delivery {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #333;
+}
+
+.calendar-day:hover .popover {
+  opacity: 1;
 }
 </style>

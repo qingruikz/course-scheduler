@@ -25,7 +25,7 @@
         </div>
 
         <div class="form-group">
-          <label>課程日数</label>
+          <label>授業回数</label>
           <div class="radio-group">
             <label class="radio-label">
               <input type="radio" v-model="selectedCourseDays" :value="7" />
@@ -39,7 +39,7 @@
         </div>
 
         <div class="form-group">
-          <label>週の授業回数</label>
+          <label>1週間の授業回数</label>
           <div class="radio-group">
             <label class="radio-label">
               <input
@@ -76,6 +76,39 @@
           </div>
           <div v-if="selectedClassesPerWeek === 2" class="day-selection-hint">
             {{ selectedDaysOfWeek.length }} / 2 日選択中
+          </div>
+        </div>
+
+        <div class="form-group" v-if="selectedDaysOfWeek.length > 0">
+          <label>授業の実施方法</label>
+          <div
+            v-for="(dayIndex, idx) in selectedDaysOfWeek"
+            :key="dayIndex"
+            class="delivery-mode-group"
+          >
+            <label class="delivery-mode-label">
+              {{ dayNames[dayIndex] }}:
+            </label>
+            <div class="delivery-mode-options">
+              <label class="radio-label">
+                <input
+                  type="radio"
+                  :name="`delivery-${dayIndex}`"
+                  :value="'face-to-face'"
+                  v-model="deliveryModes[dayIndex]"
+                />
+                <span>対面</span>
+              </label>
+              <label class="radio-label">
+                <input
+                  type="radio"
+                  :name="`delivery-${dayIndex}`"
+                  :value="'online'"
+                  v-model="deliveryModes[dayIndex]"
+                />
+                <span>オンライン</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -189,8 +222,59 @@
                 <span v-if="item.isHoliday">
                   {{ item.dateStr }} （休講）{{ item.holidayReason }}
                 </span>
-                <span v-else>
-                  {{ item.dateStr }} 第{{ item.classNumber }}回
+                <span v-else class="schedule-item-content">
+                  <span class="schedule-date"
+                    >{{ item.dateStr }} 第{{ item.classNumber }}回</span
+                  >
+                  <span
+                    :class="[
+                      'delivery-icon-wrapper',
+                      item.deliveryMode === 'online'
+                        ? 'delivery-online'
+                        : 'delivery-face-to-face',
+                    ]"
+                    @mouseenter="showDeliveryPopover($event, item.deliveryMode)"
+                    @mouseleave="hideDeliveryPopover"
+                  >
+                    <svg
+                      v-if="item.deliveryMode === 'online'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="delivery-icon"
+                    >
+                      <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                      <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                      <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                    </svg>
+                    <svg
+                      v-else
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="delivery-icon"
+                    >
+                      <path
+                        d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                      ></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                  </span>
                 </span>
               </div>
             </div>
@@ -205,6 +289,17 @@
         </div>
       </div>
     </div>
+    <!-- グローバルポップオーバー -->
+    <div
+      v-if="deliveryPopover.visible"
+      class="delivery-popover-global"
+      :style="{
+        left: deliveryPopover.x + 'px',
+        top: deliveryPopover.y + 'px',
+      }"
+    >
+      {{ deliveryPopover.text }}
+    </div>
   </div>
 </template>
 
@@ -217,6 +312,7 @@ import type {
   CourseDays,
   ClassesPerWeek,
   DayOfWeek,
+  DeliveryMode,
 } from "./types";
 import { generateSchedule as generateScheduleUtil } from "./utils/scheduleGenerator";
 import {
@@ -243,9 +339,29 @@ const selectedSemester = ref<SemesterOption>("前期");
 const selectedCourseDays = ref<CourseDays>(14);
 const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
 const selectedDaysOfWeek = ref<DayOfWeek[]>([1]); // 月曜日
+const deliveryModes = ref<Record<DayOfWeek, DeliveryMode>>({
+  0: "face-to-face",
+  1: "face-to-face",
+  2: "face-to-face",
+  3: "face-to-face",
+  4: "face-to-face",
+  5: "face-to-face",
+  6: "face-to-face",
+});
 const schedule = ref<ScheduleItem[]>([]);
 const showExportMenu = ref(false);
 const showCopyNotification = ref(false);
+const deliveryPopover = ref<{
+  visible: boolean;
+  text: string;
+  x: number;
+  y: number;
+}>({
+  visible: false,
+  text: "",
+  x: 0,
+  y: 0,
+});
 
 // 学期期間をcomputedプロパティとして定義（リアルタイム更新）
 const semesterPeriod = computed(() => {
@@ -399,7 +515,8 @@ function generateSchedule() {
       selectedSemester.value,
       selectedCourseDays.value,
       selectedClassesPerWeek.value,
-      dayOfWeekParam
+      dayOfWeekParam,
+      deliveryModes.value
     );
     console.log("Generated schedule:", result);
     schedule.value = result;
@@ -475,6 +592,24 @@ function copyToClipboard() {
 function formatPeriodDate(dateStr: string): string {
   const [year, month, day] = dateStr.split("-");
   return `${year}年${month}月${day}日`;
+}
+
+function showDeliveryPopover(
+  event: MouseEvent,
+  deliveryMode: DeliveryMode | undefined
+) {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  deliveryPopover.value = {
+    visible: true,
+    text: deliveryMode === "online" ? "オンライン" : "対面",
+    x: rect.left + rect.width / 2,
+    y: rect.top - 5,
+  };
+}
+
+function hideDeliveryPopover() {
+  deliveryPopover.value.visible = false;
 }
 </script>
 
@@ -628,6 +763,26 @@ function formatPeriodDate(dateStr: string): string {
   color: #666;
 }
 
+.delivery-mode-group {
+  margin-bottom: 10px;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.delivery-mode-label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #333;
+  font-size: 12px;
+}
+
+.delivery-mode-options {
+  display: flex;
+  gap: 15px;
+}
+
 .right-content-grid {
   display: grid;
   grid-template-columns: 350px 1fr;
@@ -746,13 +901,69 @@ function formatPeriodDate(dateStr: string): string {
   padding: 8px;
   margin-bottom: 4px;
   border-radius: 4px;
-  background: #e8f5e9;
+  background: #e3f2fd;
   font-size: 13px;
 }
 
 .schedule-item.holiday {
   background: #ffebee;
   color: #c62828;
+}
+
+.schedule-item-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.schedule-date {
+  flex: 1;
+}
+
+.delivery-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.delivery-icon {
+  color: currentColor;
+}
+
+.delivery-online {
+  color: #000000;
+}
+
+.delivery-face-to-face {
+  color: #000000;
+}
+
+.delivery-popover-global {
+  position: fixed;
+  padding: 6px 10px;
+  background-color: #333;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 10000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: translateX(-50%) translateY(-100%);
+  pointer-events: none;
+}
+
+.delivery-popover-global::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #333;
 }
 
 .empty-message {

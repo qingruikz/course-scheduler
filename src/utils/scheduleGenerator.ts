@@ -5,6 +5,7 @@ import type {
   CourseDays,
   ClassesPerWeek,
   DayOfWeek,
+  DeliveryMode,
 } from "../types";
 
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
@@ -65,7 +66,8 @@ export function generateSchedule(
   semester: SemesterOption,
   courseDays: CourseDays,
   classesPerWeek: ClassesPerWeek,
-  dayOfWeek: DayOfWeek | DayOfWeek[]
+  dayOfWeek: DayOfWeek | DayOfWeek[],
+  deliveryModes?: Record<DayOfWeek, DeliveryMode>
 ): ScheduleItem[] {
   // 学期のキーを取得（マッピングがある場合は使用）
   let semesterKey: string = semester;
@@ -143,12 +145,14 @@ export function generateSchedule(
     } else {
       // 通常の授業日
       classNumber++;
+      const deliveryMode = deliveryModes?.[dow] || "face-to-face";
       schedule.push({
         date: new Date(currentDate),
         dateStr: formatDate(currentDate),
         dayOfWeek: dayOfWeekName,
         classNumber,
         isHoliday: false,
+        deliveryMode,
       });
     }
 
