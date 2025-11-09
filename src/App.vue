@@ -86,50 +86,130 @@
 
       <!-- 右側: 授業日程リストとカレンダー -->
       <div class="right-panel">
+        <!-- コピー通知メッセージ -->
+        <Transition name="notification">
+          <div v-if="showCopyNotification" class="copy-notification">
+            クリップボードにコピーしました！
+          </div>
+        </Transition>
+
         <div class="semester-period" v-if="semesterPeriod">
           <strong>学期期間:</strong>
           {{ formatPeriodDate(semesterPeriod.start) }} ～
           {{ formatPeriodDate(semesterPeriod.end) }}
         </div>
-        <div class="schedule-list-section">
-          <h2>授業日程リスト</h2>
-          <div class="schedule-list" v-if="schedule.length > 0">
-            <div
-              v-for="(item, index) in schedule"
-              :key="index"
-              :class="['schedule-item', { holiday: item.isHoliday }]"
-            >
-              <span v-if="item.isHoliday">
-                {{ item.dateStr }} （休講）{{ item.holidayReason }}
-              </span>
-              <span v-else>
-                {{ item.dateStr }} 第{{ item.classNumber }}回
-              </span>
+
+        <div class="right-content-grid">
+          <div class="schedule-list-section">
+            <div class="schedule-header">
+              <h2>授業日程リスト</h2>
+              <div class="schedule-actions" v-if="schedule.length > 0">
+                <button
+                  class="icon-button copy-button"
+                  @click="copyToClipboard"
+                  title="クリップボードにコピー"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect
+                      x="9"
+                      y="9"
+                      width="13"
+                      height="13"
+                      rx="2"
+                      ry="2"
+                    ></rect>
+                    <path
+                      d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                    ></path>
+                  </svg>
+                </button>
+                <div class="dropdown">
+                  <button
+                    class="icon-button export-button"
+                    @click="showExportMenu = !showExportMenu"
+                    title="出力"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path
+                        d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                      ></path>
+                      <polyline points="7 10 12 15 17 10"></polyline>
+                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                  </button>
+                  <div v-if="showExportMenu" class="dropdown-menu">
+                    <button
+                      @click="handleExport('excel')"
+                      class="dropdown-item"
+                    >
+                      Excel
+                    </button>
+                    <button @click="handleExport('txt')" class="dropdown-item">
+                      TXT
+                    </button>
+                    <button
+                      @click="handleExport('markdown')"
+                      class="dropdown-item"
+                    >
+                      Markdown
+                    </button>
+                    <button @click="handleExport('json')" class="dropdown-item">
+                      JSON
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="schedule-list" v-if="schedule.length > 0">
+              <div
+                v-for="(item, index) in schedule"
+                :key="index"
+                :class="['schedule-item', { holiday: item.isHoliday }]"
+              >
+                <span v-if="item.isHoliday">
+                  {{ item.dateStr }} （休講）{{ item.holidayReason }}
+                </span>
+                <span v-else>
+                  {{ item.dateStr }} 第{{ item.classNumber }}回
+                </span>
+              </div>
+            </div>
+            <div v-else class="empty-message">
+              スケジュールを生成してください
             </div>
           </div>
-          <div v-else class="empty-message">スケジュールを生成してください</div>
-        </div>
 
-        <div class="export-section" v-if="schedule.length > 0">
-          <h3>出力</h3>
-          <div class="export-buttons">
-            <button @click="exportExcel" class="export-button">Excel</button>
-            <button @click="exportTXT" class="export-button">TXT</button>
-            <button @click="exportMarkdown" class="export-button">
-              Markdown
-            </button>
-            <button @click="exportJSON" class="export-button">JSON</button>
+          <div class="calendar-section">
+            <CalendarView v-if="schedule.length > 0" :schedule="schedule" />
           </div>
         </div>
-
-        <CalendarView v-if="schedule.length > 0" :schedule="schedule" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, watch, computed, onUnmounted } from "vue";
 import type {
   CalendarData,
   ScheduleItem,
@@ -163,6 +243,8 @@ const selectedCourseDays = ref<CourseDays>(14);
 const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
 const selectedDaysOfWeek = ref<DayOfWeek[]>([1]); // 月曜日
 const schedule = ref<ScheduleItem[]>([]);
+const showExportMenu = ref(false);
+const showCopyNotification = ref(false);
 
 // 学期期間をcomputedプロパティとして定義（リアルタイム更新）
 const semesterPeriod = computed(() => {
@@ -197,7 +279,21 @@ onMounted(async () => {
   } catch (error) {
     console.error("Failed to load calendar data:", error);
   }
+
+  // ドロップダウンメニューの外部クリックを検出
+  document.addEventListener("click", handleClickOutside);
 });
+
+onUnmounted(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
+
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as HTMLElement;
+  if (!target.closest(".dropdown")) {
+    showExportMenu.value = false;
+  }
+}
 
 // updateSemesterPeriod関数は不要になったので削除
 
@@ -315,6 +411,51 @@ function exportJSON() {
   exportToJSON(schedule.value);
 }
 
+function handleExport(type: string) {
+  switch (type) {
+    case "excel":
+      exportExcel();
+      break;
+    case "txt":
+      exportTXT();
+      break;
+    case "markdown":
+      exportMarkdown();
+      break;
+    case "json":
+      exportJSON();
+      break;
+  }
+  showExportMenu.value = false;
+}
+
+function copyToClipboard() {
+  if (schedule.value.length === 0) return;
+
+  const lines = schedule.value.map((item) => {
+    if (item.isHoliday) {
+      return `${item.dateStr} （休講）${item.holidayReason}`;
+    } else {
+      return `${item.dateStr} 第${item.classNumber}回`;
+    }
+  });
+
+  const content = lines.join("\n");
+  navigator.clipboard
+    .writeText(content)
+    .then(() => {
+      // 通知メッセージを表示
+      showCopyNotification.value = true;
+      setTimeout(() => {
+        showCopyNotification.value = false;
+      }, 2000);
+    })
+    .catch((err) => {
+      console.error("コピーに失敗しました:", err);
+      alert("クリップボードへのコピーに失敗しました。");
+    });
+}
+
 function formatPeriodDate(dateStr: string): string {
   const [year, month, day] = dateStr.split("-");
   return `${year}年${month}月${day}日`;
@@ -346,44 +487,45 @@ function formatPeriodDate(dateStr: string): string {
 
 .main-container {
   display: grid;
-  grid-template-columns: 350px 1fr;
-  gap: 30px;
-  max-width: 1400px;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  max-width: 1600px;
   margin: 0 auto;
+  padding: 0 20px;
 }
 
 .left-panel {
   background: white;
-  padding: 25px;
+  padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   height: fit-content;
 }
 
 .left-panel h2 {
-  font-size: 20px;
-  margin-bottom: 20px;
+  font-size: 18px;
+  margin-bottom: 15px;
   color: #333;
 }
 
 .form-group {
-  margin-bottom: 25px;
+  margin-bottom: 18px;
 }
 
 .form-group label {
   display: block;
   font-weight: bold;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: #333;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .form-control {
   width: 100%;
-  padding: 10px;
+  padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .radio-group {
@@ -411,13 +553,13 @@ function formatPeriodDate(dateStr: string): string {
 
 .day-button {
   flex: 1;
-  min-width: 80px;
-  padding: 10px;
+  min-width: 60px;
+  padding: 8px 4px;
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   transition: all 0.2s;
 }
 
@@ -433,15 +575,15 @@ function formatPeriodDate(dateStr: string): string {
 
 .generate-button {
   width: 100%;
-  padding: 12px;
+  padding: 10px;
   background: #0066cc;
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 8px;
   transition: background 0.2s;
 }
 
@@ -470,21 +612,114 @@ function formatPeriodDate(dateStr: string): string {
   color: #666;
 }
 
-.schedule-list-section {
-  background: white;
-  padding: 25px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.right-content-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 20px;
 }
 
-.schedule-list-section h2 {
-  font-size: 20px;
+.schedule-list-section {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 15px;
+}
+
+.schedule-header h2 {
+  font-size: 18px;
   color: #333;
+  margin: 0;
+}
+
+.schedule-actions {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dropdown {
+  position: relative;
+}
+
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 28px;
+  height: 28px;
+}
+
+.icon-button:hover {
+  background: #45a049;
+}
+
+.copy-button {
+  background: #2196f3;
+}
+
+.copy-button:hover {
+  background: #1976d2;
+}
+
+.export-button {
+  background: #4caf50;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 5px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 120px;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  background: white;
+  border: none;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: background 0.2s;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: #f5f5f5;
 }
 
 .schedule-list {
-  max-height: 400px;
+  flex: 1;
+  max-height: calc(100vh - 300px);
   overflow-y: auto;
   border: 1px solid #eee;
   border-radius: 4px;
@@ -492,11 +727,11 @@ function formatPeriodDate(dateStr: string): string {
 }
 
 .schedule-item {
-  padding: 10px;
-  margin-bottom: 5px;
+  padding: 8px;
+  margin-bottom: 4px;
   border-radius: 4px;
   background: #e8f5e9;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .schedule-item.holiday {
@@ -510,38 +745,52 @@ function formatPeriodDate(dateStr: string): string {
   padding: 40px;
 }
 
-.export-section {
+.calendar-section {
   background: white;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
 }
 
-.export-section h3 {
-  font-size: 18px;
-  margin-bottom: 15px;
-  color: #333;
-}
-
-.export-buttons {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.export-button {
-  padding: 8px 16px;
+.copy-notification {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
   background: #4caf50;
   color: white;
-  border: none;
-  border-radius: 4px;
+  padding: 12px 20px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
   font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.export-button:hover {
-  background: #45a049;
+.copy-notification::before {
+  content: "✓";
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.notification-enter-active,
+.notification-leave-active {
+  transition: all 0.3s ease;
+}
+
+.notification-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+}
+
+.notification-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
 }
 
 @media (max-width: 1024px) {
