@@ -40,7 +40,7 @@ jobs:
         run: pnpm type-check
 
       - name: Build
-        run: pnpm build
+        run: pnpm build-only
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
