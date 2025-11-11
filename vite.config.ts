@@ -11,6 +11,7 @@ export default defineConfig(({ command }) => {
   const isSingleFile = process.env.BUILD_SINGLE_FILE === "true";
 
   return {
+    base: "/course-scheduler/",
     plugins: [
       vue(),
       yaml(),
