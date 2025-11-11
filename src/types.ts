@@ -4,9 +4,6 @@ export interface YearData {
     [key: string]: [string, string];
   };
   vacations: Vacation[];
-  semester_mapping: {
-    [key: string]: string;
-  };
 }
 
 export interface CalendarData {
@@ -23,9 +20,6 @@ export interface SingleYearCalendarData {
     [key: string]: [string, string];
   };
   vacations: Vacation[];
-  semester_mapping: {
-    [key: string]: string;
-  };
 }
 
 export interface Vacation {
@@ -44,12 +38,15 @@ export interface ScheduleItem {
 }
 
 export type SemesterOption =
-  | "第一学期"
-  | "第二学期"
+  | "1学期"
+  | "2学期"
+  | "3学期"
+  | "4学期"
   | "前期"
-  | "第三学期"
-  | "第四学期"
-  | "後期";
+  | "後期"
+  | "夏期集中授業期間"
+  | "春季集中授業期間";
+
 export type CourseDays = 7 | 14;
 export type ClassesPerWeek = 1 | 2;
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=日曜日, 1=月曜日, ...

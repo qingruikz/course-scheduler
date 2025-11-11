@@ -31,12 +31,6 @@
           </span>
         </div>
       </div>
-      <p class="subtitle">
-        学期と授業の頻度を選択して、授業日程を自動生成します。
-      </p>
-      <p class="calendar-info" v-if="createdAt">
-        学年暦更新日: {{ createdAt }}
-      </p>
     </header>
 
     <div class="main-container">
@@ -56,17 +50,22 @@
               {{ formatAcademicYear(year) }}
             </option>
           </select>
+          <p class="calendar-info" v-if="createdAt">
+            学年暦更新日: {{ createdAt }}
+          </p>
         </div>
 
         <div class="form-group">
           <label for="semester">学期</label>
           <select id="semester" v-model="selectedSemester" class="form-control">
-            <option value="第一学期">第一学期</option>
-            <option value="第二学期">第二学期</option>
+            <option value="1学期">1学期</option>
+            <option value="2学期">2学期</option>
+            <option value="3学期">3学期</option>
+            <option value="4学期">4学期</option>
             <option value="前期">前期</option>
-            <option value="第三学期">第三学期</option>
-            <option value="第四学期">第四学期</option>
             <option value="後期">後期</option>
+            <option value="夏期集中授業期間">夏期集中授業期間</option>
+            <option value="春季集中授業期間">春季集中授業期間</option>
           </select>
         </div>
 
@@ -120,8 +119,9 @@
               {{ day }}
             </button>
           </div>
-          <div v-if="selectedClassesPerWeek === 2" class="day-selection-hint">
-            {{ selectedDaysOfWeek.length }} / 2 日選択中
+          <div v-if="selectedClassesPerWeek >= 2" class="day-selection-hint">
+            {{ selectedDaysOfWeek.length }} /
+            {{ selectedClassesPerWeek }} 日選択中
           </div>
         </div>
 
@@ -383,6 +383,7 @@ import {
 import CalendarView from "./components/CalendarView.vue";
 import AcademicCalendarModal from "./components/AcademicCalendarModal.vue";
 import { formatAcademicYear } from "./utils/japaneseEra";
+import { convertYamlToCalendarData } from "./utils/yamlConverter";
 
 const dayNames = [
   "日曜日",
@@ -394,14 +395,13 @@ const dayNames = [
   "土曜日",
 ];
 
-const currentYear = new Date().getFullYear();
-const selectedYear = ref<number>(currentYear);
+const selectedYear = ref<number>(0); // 初期値は0、データ読み込み後に最新年度に設定される
 const calendarData = ref<CalendarData | null>(null);
 const currentYearData = ref<YearData | null>(null);
 const availableYears = ref<number[]>([]);
 const createdAt = ref<string>("");
 const showAcademicCalendarModal = ref(false);
-const selectedSemester = ref<SemesterOption>("前期");
+const selectedSemester = ref<SemesterOption>("1学期");
 const selectedCourseDays = ref<CourseDays>(14);
 const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
 const selectedDaysOfWeek = ref<DayOfWeek[]>([1]); // 月曜日
@@ -433,19 +433,10 @@ const deliveryPopover = ref<{
 const semesterPeriod = computed(() => {
   if (!currentYearData.value) return null;
 
-  // 選択された学期のキーを取得（マッピングがある場合は使用）
-  let semesterKey: string = selectedSemester.value;
-
-  // 直接キーが存在しない場合、マッピングを確認
-  if (!currentYearData.value.semesters[semesterKey]) {
-    // マッピングを使って変換を試みる
-    const mappedKey = currentYearData.value.semester_mapping?.[semesterKey];
-    if (mappedKey) {
-      semesterKey = mappedKey;
-    }
-  }
-
+  // 選択された学期のキーを直接使用
+  const semesterKey: string = selectedSemester.value;
   const period = currentYearData.value.semesters[semesterKey];
+
   if (period) {
     return {
       start: period[0],
@@ -457,34 +448,20 @@ const semesterPeriod = computed(() => {
 
 async function loadCalendarData() {
   try {
-    // まず、srcフォルダから直接インポートを試す（ビルド時にバンドルされる）
-    try {
-      const calendarDataJson = await import("./calendar_data.json");
-      calendarData.value = calendarDataJson.default as unknown as CalendarData;
-    } catch (importError) {
-      // インポートに失敗した場合、fetchで読み込む
-      console.log("Import failed, trying fetch...", importError);
+    // data フォルダ内のすべての calendar_*.yaml ファイルを自動的にインポート
+    // import.meta.glob は Vite の機能で、パターンに一致するすべてのファイルを動的にインポート
+    const calendarModules = import.meta.glob<{ default: any }>(
+      "./data/calendar_*.yaml",
+      { eager: true }
+    );
 
-      // publicフォルダから読み込む
-      const response = await fetch("/calendar_data.json");
-      if (response.ok) {
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-          calendarData.value = await response.json();
-        } else {
-          // JSONではない場合（HTMLエラーページなど）
-          throw new Error("Response is not JSON");
-        }
-      } else {
-        // 相対パスを試す
-        const response2 = await fetch("./calendar_data.json");
-        if (response2.ok) {
-          calendarData.value = await response2.json();
-        } else {
-          throw new Error("Failed to fetch calendar data");
-        }
-      }
-    }
+    // すべての YAML データを配列として取得（ファイル名から年度を抽出する必要はない）
+    const yamlDataArray = Object.values(calendarModules).map(
+      (module) => module.default
+    );
+
+    // YAML データを CalendarData 形式に変換（年度は YAML データ内の year フィールドから読み込まれる）
+    calendarData.value = convertYamlToCalendarData(yamlDataArray);
 
     if (calendarData.value) {
       // 利用可能な年度を計算
@@ -495,8 +472,15 @@ async function loadCalendarData() {
       // 作成日を取得
       createdAt.value = calendarData.value.created_at || "";
 
-      // デフォルト年度のデータを設定
-      updateCurrentYearData(selectedYear.value);
+      // 最新年度（最大値）をデフォルトとして設定
+      if (availableYears.value.length > 0) {
+        const latestYear = Math.max(...availableYears.value);
+        selectedYear.value = latestYear;
+        // デフォルト年度のデータを設定
+        updateCurrentYearData(selectedYear.value);
+      } else {
+        console.warn("利用可能な年度データがありません。");
+      }
     } else {
       console.error("Calendar data is null");
     }
@@ -593,13 +577,6 @@ function toggleDay(index: DayOfWeek) {
 }
 
 function generateSchedule() {
-  console.log("generateSchedule called");
-  console.log("currentYearData:", currentYearData.value);
-  console.log("selectedSemester:", selectedSemester.value);
-  console.log("selectedCourseDays:", selectedCourseDays.value);
-  console.log("selectedClassesPerWeek:", selectedClassesPerWeek.value);
-  console.log("selectedDaysOfWeek:", selectedDaysOfWeek.value);
-
   if (!currentYearData.value) {
     alert("学年暦データの読み込みに失敗しました。");
     return;
@@ -618,17 +595,19 @@ function generateSchedule() {
     return;
   }
 
-  const dayOfWeekParam =
+  // 週1回の場合は配列の最初の要素だけを含む配列を作成、週2回の場合はそのまま使用
+  const dayOfWeekParam: DayOfWeek[] =
     selectedClassesPerWeek.value === 1
-      ? selectedDaysOfWeek.value[0]
+      ? selectedDaysOfWeek.value.length > 0 &&
+        selectedDaysOfWeek.value[0] !== undefined
+        ? [selectedDaysOfWeek.value[0]]
+        : []
       : selectedDaysOfWeek.value;
 
-  if (dayOfWeekParam === undefined) {
+  if (dayOfWeekParam.length === 0) {
     alert("曜日が選択されていません。");
     return;
   }
-
-  console.log("dayOfWeekParam:", dayOfWeekParam);
 
   try {
     if (!currentYearData.value) {
@@ -640,11 +619,9 @@ function generateSchedule() {
       currentYearData.value,
       selectedSemester.value,
       selectedCourseDays.value,
-      selectedClassesPerWeek.value,
       dayOfWeekParam,
       deliveryModes.value
     );
-    console.log("Generated schedule:", result);
     schedule.value = result;
   } catch (error) {
     console.error("Error generating schedule:", error);
@@ -715,8 +692,10 @@ function copyToClipboard() {
     });
 }
 
-function formatPeriodDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split("-");
+function formatPeriodDate(dateStr: string | unknown): string {
+  // 型安全性のため、文字列に変換してから処理
+  const str = typeof dateStr === "string" ? dateStr : String(dateStr);
+  const [year, month, day] = str.split("-");
   return `${year}年${month}月${day}日`;
 }
 
@@ -767,9 +746,15 @@ function hideDeliveryPopover() {
 }
 
 .academic-year {
-  font-size: 18px;
-  color: #666;
-  font-weight: normal;
+  font-size: 20px;
+  color: #0066cc;
+  font-weight: bold;
+  background-color: #e3f2fd;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 2px solid #0066cc;
+  display: inline-block;
+  margin-left: 15px;
 }
 
 .header-left {
@@ -801,16 +786,11 @@ function hideDeliveryPopover() {
   background-color: #f0f0f0;
 }
 
-.subtitle {
-  font-size: 14px;
-  color: #666;
-  margin: 5px 0;
-}
-
 .calendar-info {
-  font-size: 12px;
+  font-size: 11px;
   color: #888;
-  margin: 5px 0 0 0;
+  margin: 6px 0 0 0;
+  font-style: italic;
 }
 
 .main-container {

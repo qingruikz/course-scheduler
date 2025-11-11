@@ -24,7 +24,6 @@
             :key="index"
             :class="[
               'calendar-day',
-              { 'other-month': !day.isCurrentMonth },
               { highlighted: day.isHighlighted },
               { holiday: day.isHoliday },
             ]"
@@ -124,15 +123,25 @@ const props = defineProps<{
   schedule: ScheduleItem[];
 }>();
 
+// 大学公式の学年暦PDFのURL
 const calendarPdfUrl =
   "https://www.musashino-u.ac.jp/student-life/campus_life/calendar.html";
 
+// 曜日のラベル（日曜日から土曜日）
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
+/**
+ * スケジュールに含まれるすべての日付をSet形式で取得
+ * カレンダー上でハイライト表示する日付を判定するために使用
+ */
 const highlightedDates = computed(() => {
   return new Set(props.schedule.map((item) => formatDateShort(item.date)));
 });
 
+/**
+ * 休日（休講日）の日付をSet形式で取得
+ * カレンダー上で休日として表示する日付を判定するために使用
+ */
 const holidayDates = computed(() => {
   return new Set(
     props.schedule
@@ -141,6 +150,10 @@ const holidayDates = computed(() => {
   );
 });
 
+/**
+ * 休日の理由を日付をキーとしてMap形式で取得
+ * カレンダー上で休日の理由を表示するために使用
+ */
 const holidayReasons = computed(() => {
   const map = new Map<string, string>();
   props.schedule
@@ -152,6 +165,10 @@ const holidayReasons = computed(() => {
   return map;
 });
 
+/**
+ * スケジュール情報を日付をキーとしてMap形式で取得
+ * カレンダー上の各日付に対応する授業情報（回数、実施方法など）を取得するために使用
+ */
 const scheduleInfo = computed(() => {
   const map = new Map<string, ScheduleItem>();
   props.schedule.forEach((item) => {
@@ -161,20 +178,51 @@ const scheduleInfo = computed(() => {
   return map;
 });
 
+/**
+ * displayedMonths: カレンダー表示用の月データを生成
+ *
+ * この関数は、スケジュールに含まれる日付の範囲を分析し、
+ * その範囲内のすべての月についてカレンダーグリッドを生成します。
+ *
+ * 主な処理内容:
+ * 1. スケジュールから最小日付と最大日付を取得
+ * 2. 最小日付から最大日付までのすべての月をループ処理
+ * 3. 各月について:
+ *    - 月の最初の日の曜日を計算（カレンダーグリッドの開始位置を決定）
+ *    - 月のすべての日付を生成し、各日付に以下の情報を付与:
+ *      * 日付番号（1-31）
+ *      * スケジュールに含まれるかどうか（ハイライト表示用）
+ *      * 休日かどうか（休講日表示用）
+ *      * 休日の理由（あれば）
+ *      * 授業情報（回数、実施方法など）
+ * 4. 各月のデータを配列に追加して返却
+ *
+ * 返却値:
+ * - 各月のデータを含む配列
+ * - 各月データには、年、月、日付配列が含まれる
+ * - 日付配列の各要素には、表示用の情報（日付番号、ハイライト状態、休日情報など）が含まれる
+ *
+ * 例: スケジュールが4月16日から6月10日までの場合
+ *   → 4月、5月、6月の3つのカレンダーを生成
+ */
 const displayedMonths = computed(() => {
+  // スケジュールが空の場合は空配列を返す
   if (props.schedule.length === 0) return [];
 
+  // スケジュールに含まれるすべての日付を取得
   const dates = props.schedule.map((item) => item.date);
+  // 最小日付（スケジュールの開始日）を取得
   const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+  // 最大日付（スケジュールの終了日）を取得
   const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
 
+  // 生成する月データを格納する配列
   const months: Array<{
     key: string;
     year: number;
     month: number;
     days: Array<{
       day: number;
-      isCurrentMonth: boolean;
       isHighlighted: boolean;
       isHoliday: boolean;
       holidayReason?: string;
@@ -182,71 +230,84 @@ const displayedMonths = computed(() => {
     }>;
   }> = [];
 
+  // 処理開始年月を設定（最小日付の年月）
   let currentYear = minDate.getFullYear();
   let currentMonth = minDate.getMonth();
+  // 処理終了年月を設定（最大日付の年月）
   const endYear = maxDate.getFullYear();
   const endMonth = maxDate.getMonth();
 
+  // 最小日付から最大日付までのすべての月をループ処理
   while (
     currentYear < endYear ||
     (currentYear === endYear && currentMonth <= endMonth)
   ) {
     const year = currentYear;
     const month = currentMonth;
+    // 月の最初の日（1日）を取得
     const firstDay = new Date(year, month, 1);
+    // 月の最後の日を取得（次の月の0日 = 今月の最終日）
     const lastDay = new Date(year, month + 1, 0);
+    // 月の最初の日の曜日を取得（0=日曜日、1=月曜日、...、6=土曜日）
     const firstDayOfWeek = firstDay.getDay();
 
+    // この月の日付データを格納する配列
     const days: Array<{
       day: number;
-      isCurrentMonth: boolean;
       isHighlighted: boolean;
       isHoliday: boolean;
       holidayReason?: string;
       scheduleInfo?: ScheduleItem;
     }> = [];
 
-    // 今月の日付のみを表示
-    // 最初の週の空白を追加
+    // カレンダーグリッドの最初の週の空白セルを追加
+    // 例: 月の1日が水曜日（3）の場合、日曜日（0）、月曜日（1）、火曜日（2）の3つの空白セルを追加
     for (let i = 0; i < firstDayOfWeek; i++) {
       days.push({
-        day: 0,
-        isCurrentMonth: true,
+        day: 0, // 0は空白セルを表す
         isHighlighted: false,
         isHoliday: false,
       });
     }
 
-    // 今月の日付
+    // 月のすべての日付（1日から最終日まで）を生成
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
       const dateStr = formatDateShort(date);
+      // この日付が休日かどうかを判定
       const isHoliday = holidayDates.value.has(dateStr);
+      // この日付に対応するスケジュール情報を取得
       const info = scheduleInfo.value.get(dateStr);
       days.push({
-        day,
-        isCurrentMonth: true,
+        day, // 日付番号（1-31）
+        // この日付がスケジュールに含まれるかどうか（ハイライト表示用）
         isHighlighted: highlightedDates.value.has(dateStr),
+        // この日付が休日かどうか
         isHoliday,
+        // 休日の理由（休日の場合のみ）
         holidayReason: isHoliday
           ? holidayReasons.value.get(dateStr)
           : undefined,
+        // この日付の授業情報（回数、実施方法など）
         scheduleInfo: info,
       });
     }
 
+    // 生成した月データを配列に追加
     months.push({
-      key: `${year}-${month}`,
+      key: `${year}-${month}`, // 一意のキー（例: "2025-3"）
       year,
-      month: month + 1,
+      month: month + 1, // 月は0始まりなので+1（表示用）
       days,
     });
 
-    // 次の月へ
+    // 次の月へ進む
     if (currentMonth === 11) {
+      // 12月（11）の場合は、翌年の1月（0）に進む
       currentMonth = 0;
       currentYear++;
     } else {
+      // それ以外の場合は、次の月に進む
       currentMonth++;
     }
   }
@@ -377,10 +438,6 @@ const displayedMonths = computed(() => {
   border-radius: 3px;
   transition: all 0.2s;
   line-height: 1;
-}
-
-.calendar-day.other-month {
-  color: #ccc;
 }
 
 .day-number.empty {
