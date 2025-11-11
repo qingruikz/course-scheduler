@@ -672,7 +672,9 @@ function copyToClipboard() {
     if (item.isHoliday) {
       return `${item.dateStr} （休講）${item.holidayReason}`;
     } else {
-      return `${item.dateStr} 第${item.classNumber}回`;
+      const deliveryModeText =
+        item.deliveryMode === "online" ? "オンライン" : "対面";
+      return `${item.dateStr} 第${item.classNumber}回 ${deliveryModeText}`;
     }
   });
 
