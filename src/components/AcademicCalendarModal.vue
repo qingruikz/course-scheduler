@@ -5,14 +5,41 @@
         <h2>{{ formatAcademicYear(year) }} 学年暦</h2>
         <button class="close-button" @click="closeModal">×</button>
       </div>
+      <div class="legend-container">
+        <div class="legend-item">
+          <span class="legend-color semester-1"></span>
+          <span class="legend-label">1学期</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color semester-2"></span>
+          <span class="legend-label">2学期</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color semester-3"></span>
+          <span class="legend-label">3学期</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color semester-4"></span>
+          <span class="legend-label">4学期</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color semester-summer"></span>
+          <span class="legend-label">夏期集中授業期間</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color semester-spring"></span>
+          <span class="legend-label">春季集中授業期間</span>
+        </div>
+      </div>
       <div class="modal-body">
         <div class="calendars-container">
           <!-- 1列目: 4月から9月 -->
           <div class="calendar-column">
             <div
-              v-for="month in firstHalfMonths"
+              v-for="(month, index) in firstHalfMonths"
               :key="month.key"
               class="calendar-month"
+              :style="{ minHeight: getMonthMinHeight(index, 'first') }"
             >
               <div class="calendar-header">
                 {{ month.year }}年{{ month.month }}月
@@ -29,10 +56,12 @@
                   :class="[
                     'calendar-day',
                     { 'other-month': !day.isCurrentMonth },
-                    { 'semester-1': day.semester === 1 },
-                    { 'semester-2': day.semester === 2 },
-                    { 'semester-3': day.semester === 3 },
-                    { 'semester-4': day.semester === 4 },
+                    { 'semester-1': day.semester === '1' },
+                    { 'semester-2': day.semester === '2' },
+                    { 'semester-3': day.semester === '3' },
+                    { 'semester-4': day.semester === '4' },
+                    { 'semester-summer': day.semester === 'summer' },
+                    { 'semester-spring': day.semester === 'spring' },
                     { sunday: day.dayOfWeek === 0 },
                     { holiday: day.isHoliday },
                   ]"
@@ -41,13 +70,21 @@
                     <span class="day-number">{{ day.day }}</span>
                     <div
                       v-if="day.isHoliday && day.holidayReason"
-                      class="day-holiday-text"
+                      class="day-holiday-text-wrapper"
                     >
-                      {{
-                        day.holidayReason.length > 8
-                          ? day.holidayReason.substring(0, 8) + "..."
-                          : day.holidayReason
-                      }}
+                      <div class="day-holiday-text">
+                        {{
+                          day.holidayReason.length > 8
+                            ? day.holidayReason.substring(0, 8) + "..."
+                            : day.holidayReason
+                        }}
+                      </div>
+                      <div
+                        v-if="day.holidayReason && day.holidayReason.length > 8"
+                        class="holiday-tooltip"
+                      >
+                        {{ day.holidayReason }}
+                      </div>
                     </div>
                   </div>
                   <span v-else class="day-number empty"></span>
@@ -58,9 +95,10 @@
           <!-- 2列目: 10月から翌年3月 -->
           <div class="calendar-column">
             <div
-              v-for="month in secondHalfMonths"
+              v-for="(month, index) in secondHalfMonths"
               :key="month.key"
               class="calendar-month"
+              :style="{ minHeight: getMonthMinHeight(index, 'second') }"
             >
               <div class="calendar-header">
                 {{ month.year }}年{{ month.month }}月
@@ -77,10 +115,12 @@
                   :class="[
                     'calendar-day',
                     { 'other-month': !day.isCurrentMonth },
-                    { 'semester-1': day.semester === 1 },
-                    { 'semester-2': day.semester === 2 },
-                    { 'semester-3': day.semester === 3 },
-                    { 'semester-4': day.semester === 4 },
+                    { 'semester-1': day.semester === '1' },
+                    { 'semester-2': day.semester === '2' },
+                    { 'semester-3': day.semester === '3' },
+                    { 'semester-4': day.semester === '4' },
+                    { 'semester-summer': day.semester === 'summer' },
+                    { 'semester-spring': day.semester === 'spring' },
                     { sunday: day.dayOfWeek === 0 },
                     { holiday: day.isHoliday },
                   ]"
@@ -89,13 +129,21 @@
                     <span class="day-number">{{ day.day }}</span>
                     <div
                       v-if="day.isHoliday && day.holidayReason"
-                      class="day-holiday-text"
+                      class="day-holiday-text-wrapper"
                     >
-                      {{
-                        day.holidayReason.length > 8
-                          ? day.holidayReason.substring(0, 8) + "..."
-                          : day.holidayReason
-                      }}
+                      <div class="day-holiday-text">
+                        {{
+                          day.holidayReason.length > 8
+                            ? day.holidayReason.substring(0, 8) + "..."
+                            : day.holidayReason
+                        }}
+                      </div>
+                      <div
+                        v-if="day.holidayReason && day.holidayReason.length > 8"
+                        class="holiday-tooltip"
+                      >
+                        {{ day.holidayReason }}
+                      </div>
                     </div>
                   </div>
                   <span v-else class="day-number empty"></span>
@@ -132,28 +180,40 @@ function closeModal() {
 }
 
 // 日付がどの学期に属するかを判定
-function getSemesterForDate(date: Date): number | null {
+function getSemesterForDate(date: Date): string | null {
   if (!props.yearData) return null;
 
   const dateStr = formatDateShort(date);
   const semesters = props.yearData.semesters;
 
-  // 各学期の期間をチェック
-  if (semesters["1学期"]) {
-    const [start1, end1] = semesters["1学期"];
-    if (dateStr >= start1 && dateStr <= end1) return 1;
-  }
-  if (semesters["2学期"]) {
-    const [start2, end2] = semesters["2学期"];
-    if (dateStr >= start2 && dateStr <= end2) return 2;
-  }
-  if (semesters["3学期"]) {
-    const [start3, end3] = semesters["3学期"];
-    if (dateStr >= start3 && dateStr <= end3) return 3;
-  }
-  if (semesters["4学期"]) {
-    const [start4, end4] = semesters["4学期"];
-    if (dateStr >= start4 && dateStr <= end4) return 4;
+  // 各学期の期間をチェック（順序は重要：より具体的な期間を先にチェック）
+  const semesterKeys: Array<
+    | "1学期"
+    | "2学期"
+    | "3学期"
+    | "4学期"
+    | "夏期集中授業期間"
+    | "春季集中授業期間"
+  > = [
+    "1学期",
+    "2学期",
+    "3学期",
+    "4学期",
+    "夏期集中授業期間",
+    "春季集中授業期間",
+  ];
+
+  for (const key of semesterKeys) {
+    if (semesters[key]) {
+      const [start, end] = semesters[key];
+      if (dateStr >= start && dateStr <= end) {
+        // CSS クラス名用に変換
+        if (key === "夏期集中授業期間") return "summer";
+        if (key === "春季集中授業期間") return "spring";
+        // 1学期、2学期、3学期、4学期はそのまま数字を返す
+        return key.replace("学期", "");
+      }
+    }
   }
 
   return null;
@@ -192,7 +252,7 @@ const displayedMonths = computed(() => {
     days: Array<{
       day: number;
       isCurrentMonth: boolean;
-      semester: number | null;
+      semester: string | null;
       dayOfWeek: number;
       isHoliday: boolean;
       holidayReason?: string;
@@ -214,7 +274,7 @@ const displayedMonths = computed(() => {
     const days: Array<{
       day: number;
       isCurrentMonth: boolean;
-      semester: number | null;
+      semester: string | null;
       dayOfWeek: number;
       isHoliday: boolean;
       holidayReason?: string;
@@ -241,7 +301,7 @@ const displayedMonths = computed(() => {
       days.push({
         day,
         isCurrentMonth: true,
-        semester,
+        semester: semester, // semester は string | null
         dayOfWeek,
         isHoliday: holidayInfo.isHoliday,
         holidayReason: holidayInfo.reason,
@@ -274,6 +334,45 @@ const secondHalfMonths = computed(() => {
     return monthNum >= 10 || monthNum <= 3;
   });
 });
+
+/**
+ * 月份日历的行数计算
+ * 通过 days 数组长度除以7（每周7天）并向上取整
+ */
+function getMonthRows(month: { days: Array<{ day: number }> }): number {
+  return Math.ceil(month.days.length / 7);
+}
+
+/**
+ * 根据左右对应月份的行数计算 min-height
+ * @param index - 月份在对应列中的索引
+ * @param column - 'first' 或 'second'，表示是第一列还是第二列
+ * @returns min-height 的 CSS 值
+ */
+function getMonthMinHeight(index: number, column: "first" | "second"): string {
+  const firstMonth = firstHalfMonths.value[index];
+  const secondMonth = secondHalfMonths.value[index];
+
+  // 如果对应位置的月份不存在，返回默认值
+  if (!firstMonth || !secondMonth) {
+    return "300px";
+  }
+
+  const firstRows = getMonthRows(firstMonth);
+  const secondRows = getMonthRows(secondMonth);
+
+  // 如果有一个是6行，设置 min-height: 380px
+  if (firstRows === 6 || secondRows === 6) {
+    return "360px";
+  }
+  // 如果都是5行，设置 min-height: 340px
+  else if (firstRows === 5 && secondRows === 5) {
+    return "310px";
+  }
+
+  // 其他情况返回默认值
+  return "300px";
+}
 </script>
 
 <style scoped>
@@ -308,6 +407,64 @@ const secondHalfMonths = computed(() => {
   align-items: center;
   padding: 20px;
   border-bottom: 1px solid #eee;
+}
+
+.legend-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #eee;
+  background-color: #f9f9f9;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.legend-color.semester-1 {
+  background-color: #c8e6c9;
+  border: 1px solid #2e7d32;
+}
+
+.legend-color.semester-2 {
+  background-color: #bbdefb;
+  border: 1px solid #1565c0;
+}
+
+.legend-color.semester-3 {
+  background-color: #ffe0b2;
+  border: 1px solid #e65100;
+}
+
+.legend-color.semester-4 {
+  background-color: #e1bee7;
+  border: 1px solid #6a1b9a;
+}
+
+.legend-color.semester-summer {
+  background-color: #a5d6a7;
+  border: 1px solid #388e3c;
+}
+
+.legend-color.semester-spring {
+  background-color: #f8bbd0;
+  border: 1px solid #c2185b;
+}
+
+.legend-label {
+  font-size: 12px;
+  color: #333;
 }
 
 .modal-header h2 {
@@ -345,6 +502,7 @@ const secondHalfMonths = computed(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 30px;
+  align-items: start;
 }
 
 .calendar-column {
@@ -358,6 +516,8 @@ const secondHalfMonths = computed(() => {
   border-radius: 6px;
   padding: 12px;
   background: white;
+  display: flex;
+  flex-direction: column;
 }
 
 .calendar-header {
@@ -394,12 +554,14 @@ const secondHalfMonths = computed(() => {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   cursor: default;
   min-height: 0;
-  padding: 4px;
+  padding: 2px;
   box-sizing: border-box;
   border-radius: 3px;
+  max-width: 50px;
+  max-height: 50px;
 }
 
 .day-content {
@@ -415,14 +577,15 @@ const secondHalfMonths = computed(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  min-height: 20px;
-  height: 20px;
-  padding: 2px 4px;
+  min-width: 18px;
+  min-height: 18px;
+  height: 18px;
+  padding: 1px 3px;
   border-radius: 3px;
   transition: all 0.2s;
   line-height: 1;
   font-weight: bold;
+  font-size: 11px;
 }
 
 .day-number.empty {
@@ -436,18 +599,28 @@ const secondHalfMonths = computed(() => {
 }
 
 .calendar-day.semester-2 .day-number {
-  background-color: #ffe0b2; /* オレンジ */
-  color: #e65100;
+  background-color: #bbdefb; /* 青 */
+  color: #1565c0;
 }
 
 .calendar-day.semester-3 .day-number {
-  background-color: #bbdefb; /* 青 */
-  color: #1565c0;
+  background-color: #ffe0b2; /* オレンジ */
+  color: #e65100;
 }
 
 .calendar-day.semester-4 .day-number {
   background-color: #e1bee7; /* 紫 */
   color: #6a1b9a;
+}
+
+.calendar-day.semester-summer .day-number {
+  background-color: #a5d6a7; /* 緑（1学期より濃い） */
+  color: #388e3c;
+}
+
+.calendar-day.semester-spring .day-number {
+  background-color: #f8bbd0; /* ピンク */
+  color: #c2185b;
 }
 
 /* 日曜日と休日（ピンク） */
@@ -466,12 +639,21 @@ const secondHalfMonths = computed(() => {
 .calendar-day.holiday.semester-2 .day-number,
 .calendar-day.holiday.semester-3 .day-number,
 .calendar-day.holiday.semester-4 .day-number,
+.calendar-day.holiday.semester-summer .day-number,
+.calendar-day.holiday.semester-spring .day-number,
 .calendar-day.sunday.semester-1 .day-number,
 .calendar-day.sunday.semester-2 .day-number,
 .calendar-day.sunday.semester-3 .day-number,
-.calendar-day.sunday.semester-4 .day-number {
+.calendar-day.sunday.semester-4 .day-number,
+.calendar-day.sunday.semester-summer .day-number,
+.calendar-day.sunday.semester-spring .day-number {
   background-color: #ffcccc; /* ピンク */
   color: #c62828;
+}
+
+.day-holiday-text-wrapper {
+  position: relative;
+  width: 100%;
 }
 
 .day-holiday-text {
@@ -483,6 +665,43 @@ const secondHalfMonths = computed(() => {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.holiday-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 5px;
+  padding: 8px 12px;
+  background-color: #333;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  max-width: 300px;
+  min-width: 150px;
+  word-wrap: break-word;
+  white-space: normal;
+  text-align: left;
+}
+
+.holiday-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #333;
+}
+
+.day-holiday-text-wrapper:hover .holiday-tooltip {
+  opacity: 1;
 }
 
 .calendar-day.other-month {
