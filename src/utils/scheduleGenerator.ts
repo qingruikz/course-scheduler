@@ -8,6 +8,14 @@ import type {
   DeliveryMode,
 } from "../types";
 
+/** 授業回数不足などでスケジュール生成を中止するときに使用 */
+export class ScheduleGenerationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ScheduleGenerationError";
+  }
+}
+
 const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
 const DAY_NAMES_FULL = [
   "日曜日",
@@ -234,10 +242,10 @@ export function generateSchedule(
   // 日付順にソート
   schedule.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  // 警告: 要求された授業回数に達していない場合
+  // 要求された授業回数に達していない場合は中止し、呼び出し元で Message 表示
   if (classNumber < courseDays) {
-    console.warn(
-      `警告: 要求された授業回数（${courseDays}回）に達していません。実際の授業回数: ${classNumber}回。学期期間内の休日が多すぎる可能性があります。`
+    throw new ScheduleGenerationError(
+      `要求された授業回数（${courseDays}回）に達していません。実際の授業回数: ${classNumber}回。学期期間内の休日が多すぎる可能性があります。`
     );
   }
 

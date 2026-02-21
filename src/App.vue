@@ -1,28 +1,54 @@
 <template>
   <div class="app">
     <header class="header">
-      <button
-        class="calendar-icon-button-header"
-        @click="showAcademicCalendar"
-        title="学年暦を表示"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+      <div class="header-right-buttons">
+        <a
+          class="header-link-button"
+          href="https://www.musashino-u.ac.jp/student-life/campus_life/calendar.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="大学公式カレンダーへ"
         >
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-      </button>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+        <button
+          type="button"
+          class="calendar-icon-button-header"
+          title="学年暦を ICS でダウンロード"
+          @click="openCalendarIcsModal"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </button>
+      </div>
       <div class="header-content">
         <div class="header-left">
           <h1>大学授業スケジュールジェネレーター</h1>
@@ -169,6 +195,13 @@
         <Transition name="notification">
           <div v-if="showCopyNotification" class="copy-notification">
             クリップボードにコピーしました！
+          </div>
+        </Transition>
+        <!-- スケジュール生成エラー（Element Plus error Message 風） -->
+        <Transition name="notification">
+          <div v-if="showMessageNotification" class="message-notification message-notification--error">
+            <span class="message-notification__icon" aria-hidden="true">×</span>
+            <span class="message-notification__text">授業日が不足しています。学期・授業回数・週の回数の設定をご確認ください。</span>
           </div>
         </Transition>
 
@@ -373,13 +406,6 @@
     >
       {{ deliveryPopover.text }}
     </div>
-    <!-- 学年暦モーダル -->
-    <AcademicCalendarModal
-      :visible="showAcademicCalendarModal"
-      :year="selectedYear"
-      :yearData="currentYearData"
-      @close="closeAcademicCalendarModal"
-    />
     <!-- ICS 出力モーダル -->
     <IcsExportModal
       :visible="showIcsExportModal"
@@ -389,6 +415,13 @@
       :delivery-modes="deliveryModes"
       @close="closeIcsExportModal"
       @submit="onIcsExportSubmit"
+    />
+    <!-- 学年暦 ICS ダウンロードモーダル（ダウンロード後も閉じない） -->
+    <CalendarIcsExportModal
+      :visible="showCalendarIcsModal"
+      :events="calendarEventsForYear"
+      @close="closeCalendarIcsModal"
+      @download="onCalendarIcsDownload"
     />
   </div>
 </template>
@@ -405,18 +438,22 @@ import type {
   DayOfWeek,
   DeliveryMode,
 } from "./types";
-import { generateSchedule as generateScheduleUtil } from "./utils/scheduleGenerator";
+import {
+  generateSchedule as generateScheduleUtil,
+  ScheduleGenerationError,
+} from "./utils/scheduleGenerator";
 import {
   exportToExcel,
   exportToTXT,
   exportToMarkdown,
   exportToJSON,
   exportToICS,
+  exportCalendarEventsToIcs,
 } from "./utils/export";
 import CalendarView from "./components/CalendarView.vue";
-import AcademicCalendarModal from "./components/AcademicCalendarModal.vue";
 import IcsExportModal from "./components/IcsExportModal.vue";
-import type { IcsExportOptions } from "./types";
+import CalendarIcsExportModal from "./components/CalendarIcsExportModal.vue";
+import type { IcsExportOptions, CalendarEventsIcsOptions } from "./types";
 import { formatAcademicYear } from "./utils/japaneseEra";
 import { convertYamlToCalendarData } from "./utils/yamlConverter";
 
@@ -435,8 +472,8 @@ const calendarData = ref<CalendarData | null>(null);
 const currentYearData = ref<YearData | null>(null);
 const availableYears = ref<number[]>([]);
 const createdAt = ref<string>("");
-const showAcademicCalendarModal = ref(false);
 const showIcsExportModal = ref(false);
+const showCalendarIcsModal = ref(false);
 const selectedSemester = ref<SemesterOption>("1学期");
 const selectedCourseDays = ref<CourseDays>(14);
 const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
@@ -453,6 +490,8 @@ const deliveryModes = ref<Record<DayOfWeek, DeliveryMode>>({
 const schedule = ref<ScheduleItem[]>([]);
 const showExportMenu = ref(false);
 const showCopyNotification = ref(false);
+const showMessageNotification = ref(false);
+let messageNotificationTimer: ReturnType<typeof setTimeout> | null = null;
 const deliveryPopover = ref<{
   visible: boolean;
   text: string;
@@ -480,6 +519,11 @@ const semesterPeriod = computed(() => {
     };
   }
   return null;
+});
+
+const calendarEventsForYear = computed(() => {
+  const data = currentYearData.value;
+  return data?.events ?? [];
 });
 
 async function loadCalendarData() {
@@ -541,20 +585,27 @@ function onYearChange() {
   schedule.value = [];
 }
 
-function showAcademicCalendar() {
-  showAcademicCalendarModal.value = true;
-}
-
-function closeAcademicCalendarModal() {
-  showAcademicCalendarModal.value = false;
-}
-
 function closeIcsExportModal() {
   showIcsExportModal.value = false;
 }
 
 function onIcsExportSubmit(options: IcsExportOptions) {
   exportToICS(schedule.value, options, selectedSemester.value);
+}
+
+function openCalendarIcsModal() {
+  showCalendarIcsModal.value = true;
+}
+
+function closeCalendarIcsModal() {
+  showCalendarIcsModal.value = false;
+}
+
+function onCalendarIcsDownload(options: CalendarEventsIcsOptions) {
+  const events = calendarEventsForYear.value;
+  if (events.length === 0) return;
+  exportCalendarEventsToIcs(events, options, selectedYear.value);
+  // ダウンロード後もモーダルは閉じない
 }
 
 onMounted(async () => {
@@ -668,6 +719,15 @@ function generateSchedule() {
     );
     schedule.value = result;
   } catch (error) {
+    if (error instanceof ScheduleGenerationError) {
+      if (messageNotificationTimer) clearTimeout(messageNotificationTimer);
+      showMessageNotification.value = true;
+      messageNotificationTimer = setTimeout(() => {
+        showMessageNotification.value = false;
+        messageNotificationTimer = null;
+      }, 4000);
+      return;
+    }
     console.error("Error generating schedule:", error);
     alert(
       "スケジュール生成中にエラーが発生しました: " + (error as Error).message
@@ -777,6 +837,7 @@ function hideDeliveryPopover() {
 
 .header {
   position: relative;
+  width: 100%;
   text-align: center;
   margin-bottom: 30px;
 }
@@ -815,10 +876,18 @@ function hideDeliveryPopover() {
   flex-wrap: wrap;
 }
 
-.calendar-icon-button-header {
+.header-right-buttons {
   position: absolute;
   top: 0;
   right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+}
+
+.header-link-button,
+.calendar-icon-button-header {
   background: none;
   border: none;
   cursor: pointer;
@@ -829,9 +898,10 @@ function hideDeliveryPopover() {
   color: #0066cc;
   border-radius: 4px;
   transition: background-color 0.2s;
-  z-index: 10;
+  text-decoration: none;
 }
 
+.header-link-button:hover,
 .calendar-icon-button-header:hover {
   background-color: #f0f0f0;
 }
@@ -1218,6 +1288,49 @@ function hideDeliveryPopover() {
   content: "✓";
   font-size: 16px;
   font-weight: bold;
+}
+
+/* Element Plus error Message 風 */
+.message-notification {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 16px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10000;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 90vw;
+}
+
+.message-notification--error {
+  background: #fef0f0;
+  border: 1px solid #fde2e2;
+  color: #f56c6c;
+}
+
+.message-notification__icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f56c6c;
+  color: white;
+  border: 1px solid #f56c6c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: bold;
+}
+
+.message-notification__text {
+  flex: 1;
 }
 
 .notification-enter-active,

@@ -3,7 +3,9 @@ export interface YearData {
   semesters: {
     [key: string]: [string, string];
   };
-  vacations: Vacation[];
+  vacations: CalendarEvent[];
+  /** 全イベント（休講・授業日とも）。学年暦 ICS 出力用 */
+  events?: CalendarEvent[];
 }
 
 export interface CalendarData {
@@ -19,12 +21,29 @@ export interface SingleYearCalendarData {
   semesters: {
     [key: string]: [string, string];
   };
-  vacations: Vacation[];
+  vacations: CalendarEvent[];
+  events?: CalendarEvent[];
 }
 
-export interface Vacation {
+/** カレンダーイベントの種別（YAML の type に対応） */
+export type CalendarEventType =
+  | "national_holiday"
+  | "school_holiday"
+  | "academic"
+  | "event"
+  | "vacation";
+
+/** カレンダー上の1件のイベント（祝日・休業・学務・行事・長期休暇など） */
+export interface CalendarEvent {
   name: string;
   dates: string[];
+  /** 日付範囲の開始・終了（YAML の start/end のときのみ。終了日は含む）。ICS 出力で 1 件の跨日 VEVENT にするために使用 */
+  start?: string;
+  end?: string;
+  /** イベント種別（表示・フィルタ用） */
+  type?: CalendarEventType;
+  /** false の日のみ休講として扱う。変換器で classes_held === false のものだけ vacations に入る */
+  classes_held?: boolean;
 }
 
 export interface ScheduleItem {
@@ -70,4 +89,11 @@ export interface IcsExportOptions {
   reminder1Minutes: number;
   /** 2回目のリマインド（分）。null は「なし」 */
   reminder2Minutes?: number | null;
+}
+
+/** 学年暦 ICS 出力用オプション */
+export interface CalendarEventsIcsOptions {
+  includeTypes: CalendarEventType[];
+  classesHeldFilter: "false" | "both";
+  reminderMinutes?: number;
 }

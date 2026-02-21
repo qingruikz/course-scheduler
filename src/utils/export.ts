@@ -5,6 +5,8 @@ import type {
   IcsSlot,
   SemesterOption,
   DayOfWeek,
+  CalendarEvent,
+  CalendarEventsIcsOptions,
 } from "../types";
 import { PERIOD_TIMES_MAP } from "./periodTimes";
 
@@ -309,6 +311,103 @@ export function exportToICS(
   const a = document.createElement("a");
   a.href = url;
   a.download = finalFilename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** 学年暦イベントを終日 VEVENT として ICS に出力 */
+export function exportCalendarEventsToIcs(
+  events: CalendarEvent[],
+  options: CalendarEventsIcsOptions,
+  year: number,
+  filename?: string,
+): void {
+  const includeTypes = new Set(options.includeTypes);
+  const onlyNoClass = options.classesHeldFilter === "false";
+  const filtered: CalendarEvent[] = [];
+  for (const ev of events) {
+    const typeOk = ev.type != null ? includeTypes.has(ev.type) : false;
+    if (!typeOk) continue;
+    if (onlyNoClass && ev.classes_held !== false) continue;
+    filtered.push(ev);
+  }
+
+  const lines: string[] = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Course Scheduler//JA",
+    "CALSCALE:GREGORIAN",
+  ];
+
+  /** YYYY-MM-DD の翌日を YYYYMMDD で返す（終日イベントの DTEND は排他的なので「終了日の翌日」を指定） */
+  function nextDayYmd(ymd: string): string {
+    const [y, m, d] = ymd.split("-").map(Number);
+    const next = new Date(y!, m! - 1, (d ?? 0) + 1);
+    const ny = next.getFullYear();
+    const nm = String(next.getMonth() + 1).padStart(2, "0");
+    const nd = String(next.getDate()).padStart(2, "0");
+    return `${ny}${nm}${nd}`;
+  }
+  function toYmd(ymd: string): string {
+    return ymd.replace(/-/g, "");
+  }
+  let uidIndex = 0;
+  for (const ev of filtered) {
+    if (ev.start != null && ev.end != null) {
+      // 跨日イベント: 1 件の VEVENT。DTEND は排他的なので終了日の翌日
+      const dtStart = toYmd(ev.start);
+      const dtEnd = nextDayYmd(ev.end);
+      const uid = `course-scheduler-calendar-${year}-${uidIndex++}`;
+      lines.push("BEGIN:VEVENT");
+      lines.push(`UID:${uid}`);
+      lines.push(`DTSTART;VALUE=DATE:${dtStart}`);
+      lines.push(`DTEND;VALUE=DATE:${dtEnd}`);
+      lines.push(`SUMMARY:${escapeIcsValue(ev.name)}`);
+      if (options.reminderMinutes != null && options.reminderMinutes > 0) {
+        lines.push("BEGIN:VALARM");
+        lines.push("ACTION:DISPLAY");
+        lines.push(`TRIGGER:${alarmTrigger(options.reminderMinutes)}`);
+        lines.push("END:VALARM");
+      }
+      lines.push("END:VEVENT");
+    } else {
+      // 単日イベント: dates の各日ごとに 1 件
+      for (const dateStr of ev.dates) {
+        const dtStart = toYmd(dateStr);
+        const dtEnd = nextDayYmd(dateStr);
+        const uid = `course-scheduler-calendar-${year}-${uidIndex++}`;
+        lines.push("BEGIN:VEVENT");
+        lines.push(`UID:${uid}`);
+        lines.push(`DTSTART;VALUE=DATE:${dtStart}`);
+        lines.push(`DTEND;VALUE=DATE:${dtEnd}`);
+        lines.push(`SUMMARY:${escapeIcsValue(ev.name)}`);
+        if (options.reminderMinutes != null && options.reminderMinutes > 0) {
+          lines.push("BEGIN:VALARM");
+          lines.push("ACTION:DISPLAY");
+          lines.push(`TRIGGER:${alarmTrigger(options.reminderMinutes)}`);
+          lines.push("END:VALARM");
+        }
+        lines.push("END:VEVENT");
+      }
+    }
+  }
+
+  lines.push("END:VCALENDAR");
+
+  const raw = lines.join("\r\n");
+  const folded = raw
+    .split("\r\n")
+    .map((line) => foldLine(line))
+    .join("\r\n");
+
+  const name = filename ?? `学年暦_${year}.ics`;
+  const blob = new Blob(["\uFEFF" + folded], {
+    type: "text/calendar;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
   a.click();
   URL.revokeObjectURL(url);
 }

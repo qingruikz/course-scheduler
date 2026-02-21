@@ -1,4 +1,9 @@
-import type { CalendarData, YearData, Vacation } from "../types";
+import type {
+  CalendarData,
+  YearData,
+  CalendarEvent,
+  CalendarEventType,
+} from "../types";
 
 // YAMLファイルのデータ構造
 interface YamlSemester {
@@ -11,6 +16,10 @@ interface YamlEvent {
   date?: string;
   start?: string;
   end?: string;
+  /** national_holiday | school_holiday | academic | event | vacation */
+  type: CalendarEventType;
+  /** true: 授業実施日, false: 休講 */
+  classes_held: boolean;
 }
 
 interface YamlYearData {
@@ -47,32 +56,45 @@ function convertYamlYearData(yamlData: YamlYearData): YearData {
     semesters[key] = [start, end];
   }
 
-  // eventsをvacationsに変換
-  const vacations: Vacation[] = [];
+  // classes_held === false のイベントのみ休講日（nonClassDays）に追加。type の vacation は「长期休暇」の意味
+  const nonClassDays: CalendarEvent[] = [];
+  // 全イベント（休講・授業日とも）。学年暦 ICS 出力用
+  const allEvents: CalendarEvent[] = [];
   for (const event of yamlData.events) {
+    let dates: string[];
+    let start: string | undefined;
+    let end: string | undefined;
     if (event.date) {
-      // 単一の日付（YAMLパーサーがDateオブジェクトとして解析する可能性があるため、文字列に変換）
       const dateStr = ensureDateString(event.date);
-      vacations.push({
-        name: event.name,
-        dates: [dateStr],
-      });
+      dates = [dateStr];
     } else if (event.start && event.end) {
-      // 日付範囲（範囲内のすべての日付を生成する必要があるため、generateDateRangeを使用）
       const startStr = ensureDateString(event.start);
       const endStr = ensureDateString(event.end);
-      const dates = generateDateRange(startStr, endStr);
-      vacations.push({
-        name: event.name,
-        dates,
-      });
+      dates = generateDateRange(startStr, endStr);
+      start = startStr;
+      end = endStr;
+    } else {
+      continue;
     }
+
+    const calendarEvent: CalendarEvent = {
+      name: event.name,
+      dates,
+      start,
+      end,
+      type: event.type,
+      classes_held: event.classes_held,
+    };
+    allEvents.push(calendarEvent);
+    if (event.classes_held === true) continue;
+    nonClassDays.push(calendarEvent);
   }
 
   return {
     year: yamlData.year,
     semesters,
-    vacations,
+    vacations: nonClassDays,
+    events: allEvents,
   };
 }
 
@@ -113,7 +135,7 @@ function formatDate(date: Date): string {
  * @returns CalendarData - 統合されたカレンダーデータ
  */
 export function convertYamlToCalendarData(
-  yamlDataArray: YamlYearData[]
+  yamlDataArray: YamlYearData[],
 ): CalendarData {
   const years: { [year: string]: YearData } = {};
 
@@ -123,7 +145,7 @@ export function convertYamlToCalendarData(
     // 同じ年度のデータが既に存在する場合は警告を出力（後から読み込まれたものが優先される）
     if (years[yearStr]) {
       console.warn(
-        `警告: 年度 ${yearStr} のデータが重複しています。後から読み込まれたデータで上書きされます。`
+        `警告: 年度 ${yearStr} のデータが重複しています。後から読み込まれたデータで上書きされます。`,
       );
     }
     years[yearStr] = convertYamlYearData(yamlData);
