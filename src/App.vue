@@ -184,6 +184,28 @@
               <h2>授業日程リスト</h2>
               <div class="schedule-actions" v-if="schedule.length > 0">
                 <button
+                  class="icon-button ics-button"
+                  @click="openIcsExportModal"
+                  title="カレンダー（ICS）に出力"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </button>
+                <button
                   class="icon-button copy-button"
                   @click="copyToClipboard"
                   title="クリップボードにコピー"
@@ -358,6 +380,16 @@
       :yearData="currentYearData"
       @close="closeAcademicCalendarModal"
     />
+    <!-- ICS 出力モーダル -->
+    <IcsExportModal
+      :visible="showIcsExportModal"
+      :schedule="schedule"
+      :semester="selectedSemester"
+      :selected-days-of-week="selectedDaysOfWeek"
+      :delivery-modes="deliveryModes"
+      @close="closeIcsExportModal"
+      @submit="onIcsExportSubmit"
+    />
   </div>
 </template>
 
@@ -379,9 +411,12 @@ import {
   exportToTXT,
   exportToMarkdown,
   exportToJSON,
+  exportToICS,
 } from "./utils/export";
 import CalendarView from "./components/CalendarView.vue";
 import AcademicCalendarModal from "./components/AcademicCalendarModal.vue";
+import IcsExportModal from "./components/IcsExportModal.vue";
+import type { IcsExportOptions } from "./types";
 import { formatAcademicYear } from "./utils/japaneseEra";
 import { convertYamlToCalendarData } from "./utils/yamlConverter";
 
@@ -401,6 +436,7 @@ const currentYearData = ref<YearData | null>(null);
 const availableYears = ref<number[]>([]);
 const createdAt = ref<string>("");
 const showAcademicCalendarModal = ref(false);
+const showIcsExportModal = ref(false);
 const selectedSemester = ref<SemesterOption>("1学期");
 const selectedCourseDays = ref<CourseDays>(14);
 const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
@@ -511,6 +547,14 @@ function showAcademicCalendar() {
 
 function closeAcademicCalendarModal() {
   showAcademicCalendarModal.value = false;
+}
+
+function closeIcsExportModal() {
+  showIcsExportModal.value = false;
+}
+
+function onIcsExportSubmit(options: IcsExportOptions) {
+  exportToICS(schedule.value, options, selectedSemester.value);
 }
 
 onMounted(async () => {
@@ -663,6 +707,10 @@ function handleExport(type: string) {
       break;
   }
   showExportMenu.value = false;
+}
+
+function openIcsExportModal() {
+  showIcsExportModal.value = true;
 }
 
 function copyToClipboard() {
@@ -998,6 +1046,14 @@ function hideDeliveryPopover() {
 
 .icon-button:hover {
   background: #45a049;
+}
+
+.ics-button {
+  background: #ff9800;
+}
+
+.ics-button:hover {
+  background: #f57c00;
 }
 
 .copy-button {

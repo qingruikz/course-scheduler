@@ -51,3 +51,23 @@ export type CourseDays = 7 | 14;
 export type ClassesPerWeek = 1 | 2;
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=日曜日, 1=月曜日, ...
 export type DeliveryMode = "online" | "face-to-face";
+
+/** ICS 出力用: 1つの曜日スロット（時限 or カスタム時間 + 教室） */
+export interface IcsSlot {
+  dayOfWeek: DayOfWeek;
+  /** 1～7 の時限。null の場合は customStart/customEnd を使用 */
+  period: 1 | 2 | 3 | 4 | 5 | 6 | 7 | null;
+  customStart?: string; // "HH:mm"
+  customEnd?: string; // "HH:mm"
+  room: string;
+}
+
+/** ICS 出力用: モーダルで入力するオプション */
+export interface IcsExportOptions {
+  subjectName: string;
+  slots: IcsSlot[];
+  /** 1回目のリマインド（分）。5, 15, 30, 60, 120, 1440, 2880 */
+  reminder1Minutes: number;
+  /** 2回目のリマインド（分）。null は「なし」 */
+  reminder2Minutes?: number | null;
+}
