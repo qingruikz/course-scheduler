@@ -20,7 +20,9 @@
             stroke-linecap="round"
             stroke-linejoin="round"
           >
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <path
+              d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+            ></path>
             <polyline points="15 3 21 3 21 9"></polyline>
             <line x1="10" y1="14" x2="21" y2="3"></line>
           </svg>
@@ -139,7 +141,10 @@
             <button
               v-for="(day, index) in dayNames"
               :key="index"
-              :class="['day-button', { active: isDaySelected(index as DayOfWeek) }]"
+              :class="[
+                'day-button',
+                { active: isDaySelected(index as DayOfWeek) },
+              ]"
               @click="toggleDay(index as DayOfWeek)"
             >
               {{ day }}
@@ -191,20 +196,6 @@
 
       <!-- 右側: 授業日程リストとカレンダー -->
       <div class="right-panel">
-        <!-- コピー通知メッセージ -->
-        <Transition name="notification">
-          <div v-if="showCopyNotification" class="copy-notification">
-            クリップボードにコピーしました！
-          </div>
-        </Transition>
-        <!-- スケジュール生成エラー（Element Plus error Message 風） -->
-        <Transition name="notification">
-          <div v-if="showMessageNotification" class="message-notification message-notification--error">
-            <span class="message-notification__icon" aria-hidden="true">×</span>
-            <span class="message-notification__text">授業日が不足しています。学期・授業回数・週の回数の設定をご確認ください。</span>
-          </div>
-        </Transition>
-
         <div class="semester-period" v-if="semesterPeriod">
           <strong>学期期間:</strong>
           {{ formatPeriodDate(semesterPeriod.start) }} ～
@@ -232,7 +223,14 @@
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   >
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <rect
+                      x="3"
+                      y="4"
+                      width="18"
+                      height="18"
+                      rx="2"
+                      ry="2"
+                    ></rect>
                     <line x1="16" y1="2" x2="16" y2="6"></line>
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
@@ -423,6 +421,12 @@
       @close="closeCalendarIcsModal"
       @download="onCalendarIcsDownload"
     />
+    <!-- 統一メッセージ通知（Teleport で body 直下に表示） -->
+    <MessageNotification
+      :visible="notification.visible"
+      :message="notification.message"
+      :type="notification.type"
+    />
   </div>
 </template>
 
@@ -453,6 +457,7 @@ import {
 import CalendarView from "./components/CalendarView.vue";
 import IcsExportModal from "./components/IcsExportModal.vue";
 import CalendarIcsExportModal from "./components/CalendarIcsExportModal.vue";
+import MessageNotification from "./components/MessageNotification.vue";
 import type { IcsExportOptions, CalendarEventsIcsOptions } from "./types";
 import { formatAcademicYear } from "./utils/japaneseEra";
 import { convertYamlToCalendarData } from "./utils/yamlConverter";
@@ -474,6 +479,27 @@ const availableYears = ref<number[]>([]);
 const createdAt = ref<string>("");
 const showIcsExportModal = ref(false);
 const showCalendarIcsModal = ref(false);
+
+type NotificationType = "success" | "info" | "warning" | "error";
+const notification = ref<{
+  visible: boolean;
+  message: string;
+  type: NotificationType;
+}>({ visible: false, message: "", type: "success" });
+let notificationTimer: ReturnType<typeof setTimeout> | null = null;
+
+function showNotification(
+  message: string,
+  type: NotificationType = "success",
+  durationMs: number = 3000,
+) {
+  if (notificationTimer) clearTimeout(notificationTimer);
+  notification.value = { visible: true, message, type };
+  notificationTimer = setTimeout(() => {
+    notification.value.visible = false;
+    notificationTimer = null;
+  }, durationMs);
+}
 const selectedSemester = ref<SemesterOption>("1学期");
 const selectedCourseDays = ref<CourseDays>(14);
 const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
@@ -489,9 +515,6 @@ const deliveryModes = ref<Record<DayOfWeek, DeliveryMode>>({
 });
 const schedule = ref<ScheduleItem[]>([]);
 const showExportMenu = ref(false);
-const showCopyNotification = ref(false);
-const showMessageNotification = ref(false);
-let messageNotificationTimer: ReturnType<typeof setTimeout> | null = null;
 const deliveryPopover = ref<{
   visible: boolean;
   text: string;
@@ -532,12 +555,12 @@ async function loadCalendarData() {
     // import.meta.glob は Vite の機能で、パターンに一致するすべてのファイルを動的にインポート
     const calendarModules = import.meta.glob<{ default: any }>(
       "./data/calendar_*.yaml",
-      { eager: true }
+      { eager: true },
     );
 
     // すべての YAML データを配列として取得（ファイル名から年度を抽出する必要はない）
     const yamlDataArray = Object.values(calendarModules).map(
-      (module) => module.default
+      (module) => module.default,
     );
 
     // YAML データを CalendarData 形式に変換（年度は YAML データ内の year フィールドから読み込まれる）
@@ -673,7 +696,7 @@ function toggleDay(index: DayOfWeek) {
 
 function generateSchedule() {
   if (!currentYearData.value) {
-    alert("学年暦データの読み込みに失敗しました。");
+    showNotification("学年暦データの読み込みに失敗しました。", "error");
     return;
   }
 
@@ -681,12 +704,15 @@ function generateSchedule() {
     selectedClassesPerWeek.value === 2 &&
     selectedDaysOfWeek.value.length !== 2
   ) {
-    alert("週2回を選択した場合、2つの曜日を選択してください。");
+    showNotification(
+      "週2回を選択した場合、2つの曜日を選択してください。",
+      "error",
+    );
     return;
   }
 
   if (selectedDaysOfWeek.value.length === 0) {
-    alert("少なくとも1つの曜日を選択してください。");
+    showNotification("少なくとも1つの曜日を選択してください。", "warning");
     return;
   }
 
@@ -700,13 +726,13 @@ function generateSchedule() {
       : selectedDaysOfWeek.value;
 
   if (dayOfWeekParam.length === 0) {
-    alert("曜日が選択されていません。");
+    showNotification("曜日が選択されていません。", "warning");
     return;
   }
 
   try {
     if (!currentYearData.value) {
-      alert("年度データが読み込まれていません。");
+      showNotification("年度データが読み込まれていません。", "error");
       return;
     }
 
@@ -715,22 +741,18 @@ function generateSchedule() {
       selectedSemester.value,
       selectedCourseDays.value,
       dayOfWeekParam,
-      deliveryModes.value
+      deliveryModes.value,
     );
     schedule.value = result;
   } catch (error) {
     if (error instanceof ScheduleGenerationError) {
-      if (messageNotificationTimer) clearTimeout(messageNotificationTimer);
-      showMessageNotification.value = true;
-      messageNotificationTimer = setTimeout(() => {
-        showMessageNotification.value = false;
-        messageNotificationTimer = null;
-      }, 4000);
+      showNotification((error as Error).message, "error", 4000);
       return;
     }
     console.error("Error generating schedule:", error);
-    alert(
-      "スケジュール生成中にエラーが発生しました: " + (error as Error).message
+    showNotification(
+      "スケジュール生成中にエラーが発生しました: " + (error as Error).message,
+      "error",
     );
   }
 }
@@ -790,15 +812,11 @@ function copyToClipboard() {
   navigator.clipboard
     .writeText(content)
     .then(() => {
-      // 通知メッセージを表示
-      showCopyNotification.value = true;
-      setTimeout(() => {
-        showCopyNotification.value = false;
-      }, 2000);
+      showNotification("クリップボードにコピーしました！", "success", 2000);
     })
     .catch((err) => {
       console.error("コピーに失敗しました:", err);
-      alert("クリップボードへのコピーに失敗しました。");
+      showNotification("クリップボードへのコピーに失敗しました。", "error");
     });
 }
 
@@ -811,7 +829,7 @@ function formatPeriodDate(dateStr: string | unknown): string {
 
 function showDeliveryPopover(
   event: MouseEvent,
-  deliveryMode: DeliveryMode | undefined
+  deliveryMode: DeliveryMode | undefined,
 ) {
   const target = event.currentTarget as HTMLElement;
   const rect = target.getBoundingClientRect();
@@ -1264,88 +1282,6 @@ function hideDeliveryPopover() {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
   max-height: calc(100vh - 200px);
-}
-
-.copy-notification {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #4caf50;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10000;
-  font-size: 14px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.copy-notification::before {
-  content: "✓";
-  font-size: 16px;
-  font-weight: bold;
-}
-
-/* Element Plus error Message 風 */
-.message-notification {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 16px;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 10000;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 90vw;
-}
-
-.message-notification--error {
-  background: #fef0f0;
-  border: 1px solid #fde2e2;
-  color: #f56c6c;
-}
-
-.message-notification__icon {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #f56c6c;
-  color: white;
-  border: 1px solid #f56c6c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  line-height: 1;
-  font-weight: bold;
-}
-
-.message-notification__text {
-  flex: 1;
-}
-
-.notification-enter-active,
-.notification-leave-active {
-  transition: all 0.3s ease;
-}
-
-.notification-enter-from {
-  opacity: 0;
-  transform: translateX(-50%) translateY(10px);
-}
-
-.notification-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(10px);
 }
 
 @media (max-width: 1024px) {

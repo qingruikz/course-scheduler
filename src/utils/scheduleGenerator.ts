@@ -68,7 +68,7 @@ export function parseDate(dateStr: string): Date {
   // 日付文字列の形式を検証
   if (parts.length !== 3 || parts.some(isNaN)) {
     console.warn(
-      `日付文字列の解析に失敗しました: "${dateStr}"。形式は YYYY-MM-DD である必要があります。`
+      `日付文字列の解析に失敗しました: "${dateStr}"。形式は YYYY-MM-DD である必要があります。`,
     );
     // 解析失敗時は現在の日付を返す（エラーを避けるため）
     return new Date();
@@ -81,7 +81,7 @@ export function parseDate(dateStr: string): Date {
   // 日付の妥当性を検証
   if (month < 1 || month > 12 || day < 1 || day > 31) {
     console.warn(
-      `日付の値が無効です: "${dateStr}" (年: ${year}, 月: ${month}, 日: ${day})`
+      `日付の値が無効です: "${dateStr}" (年: ${year}, 月: ${month}, 日: ${day})`,
     );
   }
 
@@ -107,7 +107,7 @@ export function getDayOfWeek(date: Date): DayOfWeek {
  */
 export function isHoliday(
   date: Date,
-  yearData: YearData
+  yearData: YearData,
 ): { isHoliday: boolean; reason?: string } {
   const dateStr = formatDateShort(date);
 
@@ -139,7 +139,7 @@ export function generateSchedule(
   semester: SemesterOption,
   courseDays: CourseDays,
   dayOfWeek: DayOfWeek[],
-  deliveryModes?: Record<DayOfWeek, DeliveryMode>
+  deliveryModes?: Record<DayOfWeek, DeliveryMode>,
 ): ScheduleItem[] {
   // 選択された学期のキーを直接使用
   const semesterKey: string = semester;
@@ -245,7 +245,7 @@ export function generateSchedule(
   // 要求された授業回数に達していない場合は中止し、呼び出し元で Message 表示
   if (classNumber < courseDays) {
     throw new ScheduleGenerationError(
-      `要求された授業回数（${courseDays}回）に達していません。実際の授業回数: ${classNumber}回。学期期間内の休日が多すぎる可能性があります。`
+      "授業日が不足しています。学期・授業回数・週の回数の設定をご確認ください。",
     );
   }
 
