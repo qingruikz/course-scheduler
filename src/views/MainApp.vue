@@ -1464,11 +1464,11 @@ function hideDeliveryPopover() {
 }
 
 .settings-icon-button {
-  background: #757575;
+  background: #9e9e9e;
   color: #fff;
 }
 .settings-icon-button:hover {
-  background: #616161;
+  background: #858585;
   color: #fff;
 }
 
