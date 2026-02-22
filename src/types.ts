@@ -144,3 +144,37 @@ export function defaultSubjectSettings(): SubjectSettings {
     deliveryModes: defaultDeliveryModes(),
   };
 }
+
+export interface MonthBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface GridOffset {
+  paddingTop: number;
+  paddingBottom: number;
+  paddingLeft: number;
+  paddingRight: number;
+}
+
+export interface MonthLayout {
+  imageId: string;
+  rowCount: 4 | 5;
+  monthBox: MonthBox;
+  gridOffset: GridOffset;
+}
+
+export interface CalendarLayout {
+  /** 年度（学年）。月 4–12 はこの年、月 1–3 は year+1 年。 */
+  year: number;
+  /** 年度であることを示す。true のとき year は 4 月始まりの年度。 */
+  academicYear?: true;
+  /** 説明（読み込み時は未使用）。 */
+  _note?: string;
+  /** 元画像のアスペクト比（幅/高さ）。未指定時は A4 縦を仮定。月表示の縦横比に使う。 */
+  imageAspectRatio?: number;
+  images: Record<string, string>;
+  months: Record<string, MonthLayout>;
+}

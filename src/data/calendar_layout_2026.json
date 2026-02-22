@@ -1,0 +1,202 @@
+{
+  "year": 2026,
+  "academicYear": true,
+  "_note": "年度 2026（2026年4月–2027年3月）。月キー 4–12 は 2026年、1–3 は 2027年。",
+  "images": {
+    "page1": "calendar_2026.png"
+  },
+  "months": {
+    "1": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.51,
+        "y": 0.579,
+        "width": 0.456,
+        "height": 0.126
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.003
+      }
+    },
+    "2": {
+      "imageId": "page1",
+      "rowCount": 4,
+      "monthBox": {
+        "x": 0.51,
+        "y": 0.715,
+        "width": 0.456,
+        "height": 0.1
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.002
+      }
+    },
+    "3": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.51,
+        "y": 0.8255377136122569,
+        "width": 0.45667713122420617,
+        "height": 0.12492634060106067
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.005
+      }
+    },
+    "4": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.034,
+        "y": 0.172,
+        "width": 0.458,
+        "height": 0.127
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.089,
+        "paddingRight": 0.002
+      }
+    },
+    "5": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.034,
+        "y": 0.31,
+        "width": 0.458,
+        "height": 0.125
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.089,
+        "paddingRight": 0.004
+      }
+    },
+    "6": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.034,
+        "y": 0.445,
+        "width": 0.458,
+        "height": 0.125
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.091,
+        "paddingRight": 0.006
+      }
+    },
+    "7": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.034,
+        "y": 0.5788278574092148,
+        "width": 0.458,
+        "height": 0.126
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.003
+      }
+    },
+    "8": {
+      "imageId": "page1",
+      "rowCount": 4,
+      "monthBox": {
+        "x": 0.034,
+        "y": 0.715,
+        "width": 0.458,
+        "height": 0.1
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.091,
+        "paddingRight": 0.004
+      }
+    },
+    "9": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.03387820579173486,
+        "y": 0.8255377136122569,
+        "width": 0.458,
+        "height": 0.125
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.002
+      }
+    },
+    "10": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.51,
+        "y": 0.172,
+        "width": 0.456,
+        "height": 0.127
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.002
+      }
+    },
+    "11": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.51,
+        "y": 0.31,
+        "width": 0.456,
+        "height": 0.125
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.004
+      }
+    },
+    "12": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.5097224428884898,
+        "y": 0.4452588020104412,
+        "width": 0.457,
+        "height": 0.12492634060106067
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.006
+      }
+    }
+  }
+}

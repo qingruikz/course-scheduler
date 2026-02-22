@@ -50,6 +50,28 @@
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
         </button>
+        <router-link
+          to="/admin/calendar-mapper"
+          class="calendar-icon-button-header"
+          title="カレンダー配置管理"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+            ></path>
+          </svg>
+        </router-link>
       </div>
       <div class="header-content">
         <div class="header-left">
@@ -491,12 +513,60 @@
           </div>
 
           <div class="calendar-section">
+            <div class="calendar-mode-switch">
+              <span class="switch-label">学年暦背景</span>
+              <label class="toggle-switch">
+                <input
+                  v-model="useOfficialCalendarBackground"
+                  type="checkbox"
+                  class="toggle-switch-input"
+                />
+                <span class="toggle-switch-slider"></span>
+              </label>
+            </div>
             <CalendarView
-              v-if="schedule.length > 0"
+              v-if="schedule.length > 0 && !useOfficialCalendarBackground"
               :schedule="schedule"
               :yearData="currentYearData"
               :year="storeSelectedYear ?? 0"
             />
+            <OfficialCalendarView
+              v-else-if="
+                schedule.length > 0 &&
+                useOfficialCalendarBackground &&
+                calendarLayout
+              "
+              :schedule="schedule"
+              :layout="calendarLayout"
+            />
+            <div
+              v-else-if="
+                schedule.length > 0 &&
+                useOfficialCalendarBackground &&
+                !calendarLayout
+              "
+              class="official-layout-missing"
+            >
+              <p>
+                この年度（{{
+                  storeSelectedYear
+                }}）の公式カレンダー配置がありません。
+              </p>
+              <p class="hint">
+                年度を 2026 に合わせるか、<code
+                  >src/data/calendar_layout_<wbr />{{
+                    storeSelectedYear
+                  }}.json</code
+                >
+                または
+                <code
+                  >public/data/calendar_layout_<wbr />{{
+                    storeSelectedYear
+                  }}.json</code
+                >
+                を配置してください。画像は <code>public/</code> に置きます。
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -574,12 +644,15 @@ import {
   exportCalendarEventsToIcs,
 } from "../utils/export";
 import CalendarView from "../components/CalendarView.vue";
+import OfficialCalendarView from "../components/OfficialCalendarView.vue";
 import IcsExportModal from "../components/IcsExportModal.vue";
 import CalendarIcsExportModal from "../components/CalendarIcsExportModal.vue";
 import MessageNotification from "../components/MessageNotification.vue";
 import type { IcsExportOptions, CalendarEventsIcsOptions } from "../types";
 import { formatAcademicYear } from "../utils/japaneseEra";
 import { convertYamlToCalendarData } from "../utils/yamlConverter";
+import { loadCalendarLayout } from "../utils/calendarLayoutLoader";
+import type { CalendarLayout } from "../types";
 
 const settingsStore = useSettingsStore();
 const {
@@ -604,6 +677,18 @@ const availableYears = ref<number[]>([]);
 const createdAt = ref<string>("");
 const showIcsExportModal = ref(false);
 const showCalendarIcsModal = ref(false);
+const CALENDAR_MODE_KEY = "course-scheduler:useOfficialCalendarBackground";
+const useOfficialCalendarBackground = ref(
+  localStorage.getItem(CALENDAR_MODE_KEY) !== "false",
+);
+const calendarLayout = ref<CalendarLayout | null>(null);
+const calendarTestImageUrl =
+  (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/") + "calendar_2026.png";
+watch(
+  useOfficialCalendarBackground,
+  (v) => localStorage.setItem(CALENDAR_MODE_KEY, String(v)),
+  { immediate: true },
+);
 
 type NotificationType = "success" | "info" | "warning" | "error";
 const notification = ref<{
@@ -776,6 +861,14 @@ function onYearChange() {
   if (year != null) updateCurrentYearData(year);
   // 年度が変わったらスケジュールをクリア
   schedule.value = [];
+  loadCalendarLayoutForYear(year ?? 0);
+}
+
+async function loadCalendarLayoutForYear(year: number) {
+  calendarLayout.value = null;
+  if (!year) return;
+  const layout = await loadCalendarLayout(year);
+  if (storeSelectedYear.value === year) calendarLayout.value = layout;
 }
 
 function onSubjectBlur() {
@@ -865,6 +958,7 @@ function onCalendarIcsDownload(options: CalendarEventsIcsOptions) {
 onMounted(async () => {
   // 統合されたcalendar_data.jsonを読み込む
   await loadCalendarData();
+  await loadCalendarLayoutForYear(storeSelectedYear.value ?? 0);
 
   // ドロップダウンメニューの外部クリックを検出
   document.addEventListener("click", handleClickOutside);
@@ -1073,9 +1167,14 @@ function hideDeliveryPopover() {
 
 <style scoped>
 .app {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: #f5f5f5;
-  padding: 20px;
+  padding: 8px;
+  box-sizing: border-box;
 }
 
 .header {
@@ -1083,6 +1182,7 @@ function hideDeliveryPopover() {
   width: 100%;
   text-align: center;
   margin-bottom: 30px;
+  flex-shrink: 0;
 }
 
 .header-content {
@@ -1158,11 +1258,16 @@ function hideDeliveryPopover() {
 
 .main-container {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 20px;
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: 0 20px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
 }
 
 .left-panel {
@@ -1368,6 +1473,7 @@ function hideDeliveryPopover() {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0;
 }
 
 .semester-period {
@@ -1407,8 +1513,9 @@ function hideDeliveryPopover() {
 
 .right-content-grid {
   display: grid;
-  grid-template-columns: 350px 1fr;
+  grid-template-columns: minmax(0, 350px) minmax(0, 1fr);
   gap: 20px;
+  min-width: 0;
 }
 
 .schedule-list-section {
@@ -1418,6 +1525,7 @@ function hideDeliveryPopover() {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .schedule-header {
@@ -1608,7 +1716,6 @@ function hideDeliveryPopover() {
 .empty-message {
   text-align: center;
   color: #999;
-  padding: 40px;
 }
 
 .calendar-section {
@@ -1618,6 +1725,84 @@ function hideDeliveryPopover() {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
   max-height: calc(100vh - 200px);
+  min-width: 0;
+}
+
+.calendar-mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.switch-label {
+  color: #666;
+}
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.toggle-switch-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-switch-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #ccc;
+  border-radius: 22px;
+  transition: background-color 0.2s;
+}
+.toggle-switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  bottom: 2px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+.toggle-switch-input:checked + .toggle-switch-slider {
+  background-color: #0066cc;
+}
+.toggle-switch-input:checked + .toggle-switch-slider::before {
+  transform: translateX(18px);
+}
+.toggle-switch-input:focus-visible + .toggle-switch-slider {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+.official-layout-missing {
+  padding: 16px;
+  background: #fff8e6;
+  border: 1px solid #e0c000;
+  border-radius: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.official-layout-missing p {
+  margin: 0 0 8px;
+}
+.official-layout-missing p:last-child {
+  margin-bottom: 0;
+}
+.official-layout-missing .hint {
+  color: #666;
+  font-size: 12px;
+}
+.official-layout-missing code {
+  background: #eee;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
 @media (max-width: 1024px) {
