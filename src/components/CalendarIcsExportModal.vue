@@ -72,6 +72,14 @@
         </button>
         <button
           type="button"
+          class="btn-confirm btn-iphone"
+          :disabled="!hasEvents || includeTypes.length === 0"
+          @click="openQrModal"
+        >
+          iPad/iPhone で開く
+        </button>
+        <button
+          type="button"
           class="btn-confirm"
           :disabled="!hasEvents || includeTypes.length === 0"
           @click="onDownload"
@@ -80,6 +88,11 @@
         </button>
       </div>
     </div>
+    <IcsQrModal
+      :visible="showQrModal"
+      :url="qrModalUrl"
+      @close="showQrModal = false"
+    />
   </div>
 </template>
 
@@ -90,6 +103,8 @@ import type {
   CalendarEventType,
   CalendarEventsIcsOptions,
 } from "../types";
+import IcsQrModal from "./IcsQrModal.vue";
+import { encodePayload } from "../utils/icsPayload";
 
 const typeOptions: { value: CalendarEventType; label: string }[] = [
   { value: "national_holiday", label: "国民の祝日" },
@@ -112,6 +127,8 @@ const reminderOptions = [
 const props = defineProps<{
   visible: boolean;
   events: CalendarEvent[];
+  /** 年度（QR 用ペイロードに必要） */
+  year?: number;
   /** 保存済みの学年暦 ICS 設定（あればモーダル打開時に反映） */
   initialCalendarIcsOptions?: CalendarEventsIcsOptions | null;
 }>();
@@ -126,6 +143,8 @@ const includeTypes = ref<CalendarEventType[]>([
 ]);
 const classesHeldFilter = ref<"false" | "both">("false");
 const reminderMinutes = ref<number | null>(null);
+const showQrModal = ref(false);
+const qrModalUrl = ref("");
 
 const hasEvents = computed(() => props.events.length > 0);
 
@@ -141,6 +160,25 @@ function onDownload() {
     reminderMinutes: reminderMinutes.value ?? undefined,
   };
   emit("download", options);
+}
+
+function openQrModal() {
+  if (!hasEvents.value || includeTypes.value.length === 0) return;
+  const y = props.year ?? 0;
+  const calendarIcsOptions: CalendarEventsIcsOptions = {
+    includeTypes: [...includeTypes.value],
+    classesHeldFilter: classesHeldFilter.value,
+    reminderMinutes: reminderMinutes.value ?? undefined,
+  };
+  const payload = {
+    type: "calendar" as const,
+    year: y,
+    calendarIcsOptions,
+  };
+  const encoded = encodePayload(payload);
+  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  qrModalUrl.value = window.location.origin + base + "/d?q=" + encoded;
+  showQrModal.value = true;
 }
 
 watch(

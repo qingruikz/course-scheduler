@@ -126,6 +126,14 @@
         </button>
         <button
           type="button"
+          class="btn-confirm btn-iphone"
+          :disabled="!hasClassDays"
+          @click="openQrModal"
+        >
+          iPad/iPhone で開く
+        </button>
+        <button
+          type="button"
           class="btn-confirm"
           :disabled="!hasClassDays"
           @click="onConfirm"
@@ -134,6 +142,11 @@
         </button>
       </div>
     </div>
+    <IcsQrModal
+      :visible="showQrModal"
+      :url="qrModalUrl"
+      @close="showQrModal = false"
+    />
   </div>
 </template>
 
@@ -142,12 +155,16 @@ import { ref, watch, computed } from "vue";
 import type {
   ScheduleItem,
   SemesterOption,
+  CourseDays,
+  ClassesPerWeek,
   DayOfWeek,
   IcsSlot,
   IcsExportOptions,
   DeliveryMode,
 } from "../types";
 import { PERIOD_TIMES } from "../utils/periodTimes";
+import IcsQrModal from "./IcsQrModal.vue";
+import { encodePayload } from "../utils/icsPayload";
 
 const DAY_NAMES_FULL = [
   "日曜日",
@@ -174,6 +191,12 @@ const props = defineProps<{
   schedule: ScheduleItem[];
   semester: SemesterOption;
   selectedDaysOfWeek: DayOfWeek[];
+  /** 年度（QR 用ペイロードに必要） */
+  year?: number;
+  /** 授業回数 7 or 14（QR 用ペイロードに必要） */
+  courseDays?: CourseDays;
+  /** 週1回 or 週2回（QR 用ペイロードに必要） */
+  classesPerWeek?: ClassesPerWeek;
   /** 各曜日の実施方法（オンラインの場合は教室を「オンライン」で初期化） */
   deliveryModes?: Record<DayOfWeek, DeliveryMode>;
   /** 科目名の初期値（store の現在科目など） */
@@ -193,6 +216,8 @@ const slots = ref<IcsSlot[]>([]);
 const reminder1Minutes = ref<number>(1440);
 const reminder2Minutes = ref<number | null>(null);
 const validationError = ref("");
+const showQrModal = ref(false);
+const qrModalUrl = ref("");
 
 const hasClassDays = computed(() => {
   return props.schedule.some((item) => !item.isHoliday);
@@ -265,6 +290,50 @@ function onConfirm() {
     reminder2Minutes: reminder2Minutes.value ?? undefined,
   };
   emit("submit", options);
+}
+
+function openQrModal() {
+  if (!hasClassDays.value) return;
+  if (!validate()) return;
+  const y = props.year ?? 0;
+  const courseDays = props.courseDays ?? 14;
+  const classesPerWeek = (props.classesPerWeek ?? 1) as 1 | 2;
+  const deliveryModes = props.deliveryModes ?? {
+    0: "face-to-face",
+    1: "face-to-face",
+    2: "face-to-face",
+    3: "face-to-face",
+    4: "face-to-face",
+    5: "face-to-face",
+    6: "face-to-face",
+  };
+  const icsExportOptions: IcsExportOptions = {
+    subjectName: subjectName.value.trim(),
+    slots: slots.value.map((s) => ({
+      dayOfWeek: s.dayOfWeek,
+      period: s.period,
+      customStart: s.customStart,
+      customEnd: s.customEnd,
+      room: s.room.trim(),
+    })),
+    reminder1Minutes: reminder1Minutes.value,
+    reminder2Minutes: reminder2Minutes.value ?? undefined,
+  };
+  const payload = {
+    type: "schedule" as const,
+    year: y,
+    semester: props.semester,
+    courseDays,
+    classesPerWeek,
+    selectedDaysOfWeek: props.selectedDaysOfWeek,
+    deliveryModes,
+    icsExportOptions,
+  };
+  const encoded = encodePayload(payload);
+  const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+  qrModalUrl.value =
+    window.location.origin + base + "/d?q=" + encoded;
+  showQrModal.value = true;
 }
 
 watch(

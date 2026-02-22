@@ -202,25 +202,17 @@ function alarmTrigger(minutes: number): string {
 }
 
 /** ファイル名に使えない文字を除去 */
-function sanitizeFilename(name: string): string {
+export function sanitizeFilename(name: string): string {
   return name.replace(/[/\\:*?"<>|]/g, "").trim() || "schedule";
 }
 
-export function exportToICS(
+/** 課表 ICS の Blob を生成（ダウンロード頁・デスクトップ共用） */
+export function buildScheduleIcsBlob(
   schedule: ScheduleItem[],
   options: IcsExportOptions,
   semester: SemesterOption,
-  filename?: string,
-): void {
+): Blob {
   const classItems = schedule.filter((item) => !item.isHoliday);
-  if (classItems.length === 0) return;
-
-  const baseName = options.subjectName?.trim();
-  const defaultFilename = baseName
-    ? `${sanitizeFilename(baseName)}.ics`
-    : "schedule.ics";
-  const finalFilename = filename ?? defaultFilename;
-
   const slots = options.slots;
   const locationLine = slots.map(slotLocationPart).join(", ");
   const timeLimitLine = slots.map(slotTimeLabel).join("+");
@@ -231,7 +223,6 @@ export function exportToICS(
     `教室　　　：${locationLine}`,
   ].join("\n");
 
-  /** 休講日（日程上は存在するが授業なし）→ EXDATE 用 */
   const holidayItems = schedule.filter((item) => item.isHoliday);
 
   const lines: string[] = [
@@ -260,7 +251,6 @@ export function exportToICS(
     const byDay = BYDAY_ICS[dow];
     const rrule = `FREQ=WEEKLY;BYDAY=${byDay};UNTIL=${untilStr}`;
 
-    /** この曜日の休講日を、このスロットの開始時刻で EXDATE に */
     const exdates = holidayItems
       .filter((item) => (item.date.getDay() as DayOfWeek) === dow)
       .map((item) => formatIcsDateTime(item.date, start));
@@ -304,9 +294,27 @@ export function exportToICS(
     .map((line) => foldLine(line))
     .join("\r\n");
 
-  const blob = new Blob(["\uFEFF" + folded], {
+  return new Blob(["\uFEFF" + folded], {
     type: "text/calendar;charset=utf-8",
   });
+}
+
+export function exportToICS(
+  schedule: ScheduleItem[],
+  options: IcsExportOptions,
+  semester: SemesterOption,
+  filename?: string,
+): void {
+  const classItems = schedule.filter((item) => !item.isHoliday);
+  if (classItems.length === 0) return;
+
+  const baseName = options.subjectName?.trim();
+  const defaultFilename = baseName
+    ? `${sanitizeFilename(baseName)}.ics`
+    : "schedule.ics";
+  const finalFilename = filename ?? defaultFilename;
+
+  const blob = buildScheduleIcsBlob(schedule, options, semester);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -315,13 +323,26 @@ export function exportToICS(
   URL.revokeObjectURL(url);
 }
 
-/** 学年暦イベントを終日 VEVENT として ICS に出力 */
-export function exportCalendarEventsToIcs(
+/** YYYY-MM-DD の翌日を YYYYMMDD で返す（終日イベントの DTEND は排他的） */
+function nextDayYmd(ymd: string): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const next = new Date(y!, m! - 1, (d ?? 0) + 1);
+  const ny = next.getFullYear();
+  const nm = String(next.getMonth() + 1).padStart(2, "0");
+  const nd = String(next.getDate()).padStart(2, "0");
+  return `${ny}${nm}${nd}`;
+}
+
+function toYmd(ymd: string): string {
+  return ymd.replace(/-/g, "");
+}
+
+/** 学年暦 ICS の Blob を生成（ダウンロード頁・デスクトップ共用） */
+export function buildCalendarIcsBlob(
   events: CalendarEvent[],
   options: CalendarEventsIcsOptions,
   year: number,
-  filename?: string,
-): void {
+): Blob {
   const includeTypes = new Set(options.includeTypes);
   const onlyNoClass = options.classesHeldFilter === "false";
   const filtered: CalendarEvent[] = [];
@@ -339,22 +360,9 @@ export function exportCalendarEventsToIcs(
     "CALSCALE:GREGORIAN",
   ];
 
-  /** YYYY-MM-DD の翌日を YYYYMMDD で返す（終日イベントの DTEND は排他的なので「終了日の翌日」を指定） */
-  function nextDayYmd(ymd: string): string {
-    const [y, m, d] = ymd.split("-").map(Number);
-    const next = new Date(y!, m! - 1, (d ?? 0) + 1);
-    const ny = next.getFullYear();
-    const nm = String(next.getMonth() + 1).padStart(2, "0");
-    const nd = String(next.getDate()).padStart(2, "0");
-    return `${ny}${nm}${nd}`;
-  }
-  function toYmd(ymd: string): string {
-    return ymd.replace(/-/g, "");
-  }
   let uidIndex = 0;
   for (const ev of filtered) {
     if (ev.start != null && ev.end != null) {
-      // 跨日イベント: 1 件の VEVENT。DTEND は排他的なので終了日の翌日
       const dtStart = toYmd(ev.start);
       const dtEnd = nextDayYmd(ev.end);
       const uid = `course-scheduler-calendar-${year}-${uidIndex++}`;
@@ -371,7 +379,6 @@ export function exportCalendarEventsToIcs(
       }
       lines.push("END:VEVENT");
     } else {
-      // 単日イベント: dates の各日ごとに 1 件
       for (const dateStr of ev.dates) {
         const dtStart = toYmd(dateStr);
         const dtEnd = nextDayYmd(dateStr);
@@ -400,10 +407,20 @@ export function exportCalendarEventsToIcs(
     .map((line) => foldLine(line))
     .join("\r\n");
 
-  const name = filename ?? `学年暦_${year}.ics`;
-  const blob = new Blob(["\uFEFF" + folded], {
+  return new Blob(["\uFEFF" + folded], {
     type: "text/calendar;charset=utf-8",
   });
+}
+
+/** 学年暦イベントを終日 VEVENT として ICS に出力 */
+export function exportCalendarEventsToIcs(
+  events: CalendarEvent[],
+  options: CalendarEventsIcsOptions,
+  year: number,
+  filename?: string,
+): void {
+  const blob = buildCalendarIcsBlob(events, options, year);
+  const name = filename ?? `学年暦_${year}.ics`;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
