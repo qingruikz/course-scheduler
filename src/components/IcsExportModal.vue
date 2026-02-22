@@ -176,6 +176,10 @@ const props = defineProps<{
   selectedDaysOfWeek: DayOfWeek[];
   /** 各曜日の実施方法（オンラインの場合は教室を「オンライン」で初期化） */
   deliveryModes?: Record<DayOfWeek, DeliveryMode>;
+  /** 科目名の初期値（store の現在科目など） */
+  initialSubjectName?: string;
+  /** 保存済みの ICS 出力設定（あればモーダル打開時に反映） */
+  initialIcsOptions?: IcsExportOptions;
 }>();
 
 const emit = defineEmits<{
@@ -267,10 +271,21 @@ watch(
   () => [props.visible, props.selectedDaysOfWeek] as const,
   ([visible, days]) => {
     if (visible && Array.isArray(days)) {
-      initSlots();
-      subjectName.value = "";
-      reminder1Minutes.value = 1440;
-      reminder2Minutes.value = null;
+      const opts = props.initialIcsOptions;
+      if (opts) {
+        subjectName.value = opts.subjectName ?? "";
+        slots.value = opts.slots.map((s) => ({
+          ...s,
+          room: s.room ?? "",
+        }));
+        reminder1Minutes.value = opts.reminder1Minutes ?? 1440;
+        reminder2Minutes.value = opts.reminder2Minutes ?? null;
+      } else {
+        initSlots();
+        subjectName.value = props.initialSubjectName?.trim() ?? "";
+        reminder1Minutes.value = 1440;
+        reminder2Minutes.value = null;
+      }
       validationError.value = "";
     }
   },

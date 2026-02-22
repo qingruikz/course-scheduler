@@ -112,6 +112,8 @@ const reminderOptions = [
 const props = defineProps<{
   visible: boolean;
   events: CalendarEvent[];
+  /** 保存済みの学年暦 ICS 設定（あればモーダル打開時に反映） */
+  initialCalendarIcsOptions?: CalendarEventsIcsOptions | null;
 }>();
 
 const emit = defineEmits<{
@@ -145,9 +147,16 @@ watch(
   () => props.visible,
   (visible) => {
     if (visible) {
-      includeTypes.value = [...typeOptions.map((o) => o.value)];
-      classesHeldFilter.value = "false";
-      reminderMinutes.value = null;
+      const opts = props.initialCalendarIcsOptions;
+      if (opts) {
+        includeTypes.value = [...opts.includeTypes];
+        classesHeldFilter.value = opts.classesHeldFilter;
+        reminderMinutes.value = opts.reminderMinutes ?? null;
+      } else {
+        includeTypes.value = [...typeOptions.map((o) => o.value)];
+        classesHeldFilter.value = "false";
+        reminderMinutes.value = null;
+      }
     }
   },
 );

@@ -54,8 +54,8 @@
       <div class="header-content">
         <div class="header-left">
           <h1>大学授業スケジュールジェネレーター</h1>
-          <span class="academic-year" v-if="selectedYear">
-            {{ formatAcademicYear(selectedYear) }}
+          <span class="academic-year" v-if="storeSelectedYear">
+            {{ formatAcademicYear(storeSelectedYear ?? 0) }}
           </span>
         </div>
       </div>
@@ -64,13 +64,68 @@
     <div class="main-container">
       <!-- 左側: 条件設定 -->
       <div class="left-panel">
-        <h2>条件設定</h2>
+        <div class="conditions-header">
+          <h2>条件設定</h2>
+          <div class="settings-export-actions">
+            <button
+              type="button"
+              class="icon-button settings-icon-button"
+              title="設定をエクスポート"
+              @click="exportSettingsToJson"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="icon-button settings-icon-button"
+              title="設定を復元"
+              @click="triggerImportSettings"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </button>
+            <input
+              ref="importFileInputRef"
+              type="file"
+              accept=".json"
+              class="hidden-file-input"
+              @change="onImportFileChange"
+            />
+          </div>
+        </div>
 
         <div class="form-group">
           <label for="year">年度</label>
           <select
             id="year"
-            v-model="selectedYear"
+            v-model="storeSelectedYear"
             class="form-control"
             @change="onYearChange"
           >
@@ -81,6 +136,57 @@
           <p class="calendar-info" v-if="createdAt">
             学年暦更新日: {{ createdAt }}
           </p>
+        </div>
+
+        <div class="form-group">
+          <label for="subject">科目</label>
+          <div class="subject-row">
+            <div class="subject-input-wrap">
+              <input
+                id="subject"
+                ref="subjectInputRef"
+                v-model="subjectInputValue"
+                type="text"
+                class="form-control subject-input"
+                placeholder="空"
+                autocomplete="off"
+                @focus="showSubjectDropdown = true"
+                @blur="onSubjectInputBlur($event)"
+                @keydown.enter="onSubjectBlur"
+              />
+              <ul
+                v-show="showSubjectDropdown"
+                class="subject-dropdown"
+                role="listbox"
+              >
+                <li
+                  role="option"
+                  class="subject-dropdown-item"
+                  :class="{ active: !currentSubject }"
+                  @mousedown.prevent="selectSubject('')"
+                >
+                  空
+                </li>
+                <li
+                  v-for="s in subjectList"
+                  :key="s"
+                  role="option"
+                  class="subject-dropdown-item"
+                  :class="{ active: currentSubject === s }"
+                  @mousedown.prevent="selectSubject(s)"
+                >
+                  <span
+                    class="subject-dropdown-delete"
+                    title="科目を削除"
+                    @mousedown.prevent.stop="confirmRemoveSubject(s)"
+                  >
+                    ×
+                  </span>
+                  <span class="subject-dropdown-label">{{ s }}</span>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -171,8 +277,9 @@
                 <input
                   type="radio"
                   :name="`delivery-${dayIndex}`"
-                  :value="'face-to-face'"
-                  v-model="deliveryModes[dayIndex]"
+                  value="face-to-face"
+                  :checked="deliveryModes[dayIndex] === 'face-to-face'"
+                  @change="setDeliveryMode(dayIndex, 'face-to-face')"
                 />
                 <span>対面</span>
               </label>
@@ -180,8 +287,9 @@
                 <input
                   type="radio"
                   :name="`delivery-${dayIndex}`"
-                  :value="'online'"
-                  v-model="deliveryModes[dayIndex]"
+                  value="online"
+                  :checked="deliveryModes[dayIndex] === 'online'"
+                  @change="setDeliveryMode(dayIndex, 'online')"
                 />
                 <span>オンライン</span>
               </label>
@@ -387,7 +495,7 @@
               v-if="schedule.length > 0"
               :schedule="schedule"
               :yearData="currentYearData"
-              :year="selectedYear"
+              :year="storeSelectedYear ?? 0"
             />
           </div>
         </div>
@@ -411,6 +519,10 @@
       :semester="selectedSemester"
       :selected-days-of-week="selectedDaysOfWeek"
       :delivery-modes="deliveryModes"
+      :initial-subject-name="currentSubject"
+      :initial-ics-options="
+        settingsStore.currentSubjectSettings.icsExportOptions
+      "
       @close="closeIcsExportModal"
       @submit="onIcsExportSubmit"
     />
@@ -418,6 +530,7 @@
     <CalendarIcsExportModal
       :visible="showCalendarIcsModal"
       :events="calendarEventsForYear"
+      :initial-calendar-ics-options="settingsStore.calendarIcsOptions"
       @close="closeCalendarIcsModal"
       @download="onCalendarIcsDownload"
     />
@@ -432,6 +545,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, computed, onUnmounted } from "vue";
+import { storeToRefs } from "pinia";
+import { useSettingsStore } from "./stores/settingsStore";
 import type {
   CalendarData,
   YearData,
@@ -462,6 +577,13 @@ import type { IcsExportOptions, CalendarEventsIcsOptions } from "./types";
 import { formatAcademicYear } from "./utils/japaneseEra";
 import { convertYamlToCalendarData } from "./utils/yamlConverter";
 
+const settingsStore = useSettingsStore();
+const {
+  subjectList,
+  currentSubject,
+  selectedYear: storeSelectedYear,
+} = storeToRefs(settingsStore);
+
 const dayNames = [
   "日曜日",
   "月曜日",
@@ -472,7 +594,6 @@ const dayNames = [
   "土曜日",
 ];
 
-const selectedYear = ref<number>(0); // 初期値は0、データ読み込み後に最新年度に設定される
 const calendarData = ref<CalendarData | null>(null);
 const currentYearData = ref<YearData | null>(null);
 const availableYears = ref<number[]>([]);
@@ -500,19 +621,63 @@ function showNotification(
     notificationTimer = null;
   }, durationMs);
 }
-const selectedSemester = ref<SemesterOption>("1学期");
-const selectedCourseDays = ref<CourseDays>(14);
-const selectedClassesPerWeek = ref<ClassesPerWeek>(1);
-const selectedDaysOfWeek = ref<DayOfWeek[]>([1]); // 月曜日
-const deliveryModes = ref<Record<DayOfWeek, DeliveryMode>>({
-  0: "face-to-face",
-  1: "face-to-face",
-  2: "face-to-face",
-  3: "face-to-face",
-  4: "face-to-face",
-  5: "face-to-face",
-  6: "face-to-face",
+const subjectInputValue = ref("");
+const showSubjectDropdown = ref(false);
+const subjectInputRef = ref<HTMLInputElement | null>(null);
+let subjectBlurTimer: ReturnType<typeof setTimeout> | null = null;
+
+watch(
+  () => settingsStore.currentSubject,
+  (cur) => {
+    subjectInputValue.value = cur === "" ? "" : cur;
+  },
+  { immediate: true },
+);
+
+function selectSubject(value: string) {
+  if (value === "") {
+    settingsStore.setCurrentSubject("");
+    subjectInputValue.value = "";
+  } else {
+    settingsStore.setCurrentSubject(value);
+    subjectInputValue.value = value;
+  }
+  showSubjectDropdown.value = false;
+  subjectInputRef.value?.blur();
+}
+
+function onSubjectInputBlur(e: FocusEvent) {
+  const next = e.relatedTarget as HTMLElement | null;
+  if (next?.closest?.(".subject-dropdown")) return;
+  if (subjectBlurTimer) clearTimeout(subjectBlurTimer);
+  subjectBlurTimer = setTimeout(() => {
+    subjectBlurTimer = null;
+    showSubjectDropdown.value = false;
+    onSubjectBlur();
+  }, 150);
+}
+
+const selectedSemester = computed({
+  get: () => settingsStore.currentSubjectSettings.semester,
+  set: (v: SemesterOption) =>
+    settingsStore.patchCurrentSubjectSettings({ semester: v }),
 });
+const selectedCourseDays = computed({
+  get: () => settingsStore.currentSubjectSettings.courseDays,
+  set: (v: CourseDays) =>
+    settingsStore.patchCurrentSubjectSettings({ courseDays: v }),
+});
+const selectedClassesPerWeek = computed({
+  get: () => settingsStore.currentSubjectSettings.classesPerWeek,
+  set: (v: ClassesPerWeek) =>
+    settingsStore.patchCurrentSubjectSettings({ classesPerWeek: v }),
+});
+const selectedDaysOfWeek = computed(
+  () => settingsStore.currentSubjectSettings.selectedDaysOfWeek,
+);
+const deliveryModes = computed(
+  () => settingsStore.currentSubjectSettings.deliveryModes,
+);
 const schedule = ref<ScheduleItem[]>([]);
 const showExportMenu = ref(false);
 const deliveryPopover = ref<{
@@ -578,9 +743,9 @@ async function loadCalendarData() {
       // 最新年度（最大値）をデフォルトとして設定
       if (availableYears.value.length > 0) {
         const latestYear = Math.max(...availableYears.value);
-        selectedYear.value = latestYear;
+        settingsStore.selectedYear = latestYear;
         // デフォルト年度のデータを設定
-        updateCurrentYearData(selectedYear.value);
+        updateCurrentYearData(latestYear);
       } else {
         console.warn("利用可能な年度データがありません。");
       }
@@ -603,9 +768,69 @@ function updateCurrentYearData(year: number) {
 }
 
 function onYearChange() {
-  updateCurrentYearData(selectedYear.value);
+  const year = storeSelectedYear.value;
+  if (year != null) updateCurrentYearData(year);
   // 年度が変わったらスケジュールをクリア
   schedule.value = [];
+}
+
+function onSubjectBlur() {
+  const trimmed = subjectInputValue.value.trim();
+  if (trimmed === "") {
+    settingsStore.setCurrentSubject("");
+    return;
+  }
+  if (settingsStore.subjectList.includes(trimmed)) {
+    settingsStore.setCurrentSubject(trimmed);
+    return;
+  }
+  settingsStore.addSubject(trimmed);
+}
+
+function confirmRemoveSubject(name: string) {
+  if (!confirm("この科目を削除しますか？")) return;
+  const wasCurrent = settingsStore.currentSubject === name;
+  settingsStore.removeSubject(name);
+  if (wasCurrent) schedule.value = [];
+}
+
+function setDeliveryMode(dayIndex: DayOfWeek, mode: DeliveryMode) {
+  settingsStore.patchCurrentSubjectSettings({
+    deliveryModes: {
+      ...settingsStore.currentSubjectSettings.deliveryModes,
+      [dayIndex]: mode,
+    },
+  });
+}
+
+const importFileInputRef = ref<HTMLInputElement | null>(null);
+function exportSettingsToJson() {
+  settingsStore.exportToJson();
+  showNotification("設定をエクスポートしました。", "success");
+}
+function triggerImportSettings() {
+  importFileInputRef.value?.click();
+}
+function onImportFileChange(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = reader.result as string;
+    const result = settingsStore.importFromJson(text);
+    if (result.success) {
+      showNotification("設定を復元しました。", "success");
+      const year = settingsStore.selectedYear;
+      if (year != null && availableYears.value.includes(year)) {
+        updateCurrentYearData(year);
+      }
+    } else {
+      showNotification(result.error ?? "復元に失敗しました。", "error");
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+  input.value = "";
 }
 
 function closeIcsExportModal() {
@@ -613,6 +838,7 @@ function closeIcsExportModal() {
 }
 
 function onIcsExportSubmit(options: IcsExportOptions) {
+  settingsStore.patchCurrentSubjectSettings({ icsExportOptions: options });
   exportToICS(schedule.value, options, selectedSemester.value);
 }
 
@@ -625,9 +851,10 @@ function closeCalendarIcsModal() {
 }
 
 function onCalendarIcsDownload(options: CalendarEventsIcsOptions) {
+  settingsStore.setCalendarIcsOptions(options);
   const events = calendarEventsForYear.value;
   if (events.length === 0) return;
-  exportCalendarEventsToIcs(events, options, selectedYear.value);
+  exportCalendarEventsToIcs(events, options, storeSelectedYear.value ?? 0);
   // ダウンロード後もモーダルは閉じない
 }
 
@@ -657,41 +884,35 @@ function isDaySelected(index: DayOfWeek): boolean {
 }
 
 function onClassesPerWeekChange() {
-  // 週の授業回数が変更されたとき、選択された曜日をリセット
-  if (selectedClassesPerWeek.value === 1) {
-    // 週1回の場合、最初の曜日だけ残す
-    if (
-      selectedDaysOfWeek.value.length > 0 &&
-      selectedDaysOfWeek.value[0] !== undefined
-    ) {
-      selectedDaysOfWeek.value = [selectedDaysOfWeek.value[0]];
-    } else {
-      selectedDaysOfWeek.value = [1]; // デフォルトは月曜日
-    }
+  const perWeek = selectedClassesPerWeek.value;
+  const days = selectedDaysOfWeek.value;
+  if (perWeek === 1) {
+    const next =
+      days.length > 0 && days[0] !== undefined ? [days[0]] : [1 as DayOfWeek];
+    settingsStore.patchCurrentSubjectSettings({ selectedDaysOfWeek: next });
   }
-  // 週2回の場合は、既存の選択を維持（最大2つまで）
 }
 
 function toggleDay(index: DayOfWeek) {
-  if (selectedClassesPerWeek.value === 1) {
-    // 週1回の場合、1つだけ選択
-    selectedDaysOfWeek.value = [index];
+  const perWeek = selectedClassesPerWeek.value;
+  const days = [...selectedDaysOfWeek.value];
+  if (perWeek === 1) {
+    settingsStore.patchCurrentSubjectSettings({
+      selectedDaysOfWeek: [index],
+    });
+    return;
+  }
+  const currentIndex = days.indexOf(index);
+  if (currentIndex >= 0) {
+    days.splice(currentIndex, 1);
   } else {
-    // 週2回の場合、最大2つまで選択
-    const currentIndex = selectedDaysOfWeek.value.indexOf(index);
-    if (currentIndex >= 0) {
-      // 既に選択されている場合は解除
-      selectedDaysOfWeek.value.splice(currentIndex, 1);
+    if (days.length < 2) {
+      days.push(index);
     } else {
-      // 選択されていない場合
-      if (selectedDaysOfWeek.value.length < 2) {
-        selectedDaysOfWeek.value.push(index);
-      } else {
-        // 既に2つ選択されている場合は、最初のものを置き換え
-        selectedDaysOfWeek.value[0] = index;
-      }
+      days[0] = index;
     }
   }
+  settingsStore.patchCurrentSubjectSettings({ selectedDaysOfWeek: days });
 }
 
 function generateSchedule() {
@@ -1037,6 +1258,108 @@ function hideDeliveryPopover() {
   background: #0052a3;
 }
 
+.subject-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.subject-input-wrap {
+  position: relative;
+  flex: 1;
+}
+.subject-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.subject-dropdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 100;
+}
+.subject-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+}
+.subject-dropdown-item:hover,
+.subject-dropdown-item.active {
+  background: #e3f2fd;
+  color: #0066cc;
+}
+.subject-dropdown-delete {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.subject-dropdown-delete:hover {
+  color: #c62828;
+  background: #ffebee;
+}
+.subject-dropdown-label {
+  flex: 1;
+  min-width: 0;
+}
+.delete-subject-button {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #c62828;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.delete-subject-button:hover {
+  background: #ffebee;
+  border-color: #c62828;
+}
+.conditions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.conditions-header h2 {
+  margin: 0;
+}
+.settings-export-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+.hidden-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .right-panel {
   display: flex;
   flex-direction: column;
@@ -1134,6 +1457,15 @@ function hideDeliveryPopover() {
 
 .icon-button:hover {
   background: #45a049;
+}
+
+.settings-icon-button {
+  background: #757575;
+  color: #fff;
+}
+.settings-icon-button:hover {
+  background: #616161;
+  color: #fff;
 }
 
 .ics-button {

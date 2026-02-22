@@ -97,3 +97,50 @@ export interface CalendarEventsIcsOptions {
   classesHeldFilter: "false" | "both";
   reminderMinutes?: number;
 }
+
+/** 1科目分の条件設定 + 課程 ICS 出力用オプション */
+export interface SubjectSettings {
+  semester: SemesterOption;
+  courseDays: CourseDays;
+  classesPerWeek: ClassesPerWeek;
+  selectedDaysOfWeek: DayOfWeek[];
+  deliveryModes: Record<DayOfWeek, DeliveryMode>;
+  /** ICS 出力の設定（科目名・時限・教室・リマインド等） */
+  icsExportOptions?: IcsExportOptions;
+}
+
+/** 設定のエクスポート/インポート用（version で将来の互換性を確保） */
+export const SETTINGS_EXPORT_VERSION = 1;
+
+export interface SettingsExport {
+  version: number;
+  subjectList: string[];
+  currentSubject: string;
+  subjectSettings: Record<string, SubjectSettings>;
+  calendarIcsOptions: CalendarEventsIcsOptions | null;
+  selectedYear?: number;
+}
+
+/** デフォルトの実施方法（全曜日対面） */
+export function defaultDeliveryModes(): Record<DayOfWeek, DeliveryMode> {
+  return {
+    0: "face-to-face",
+    1: "face-to-face",
+    2: "face-to-face",
+    3: "face-to-face",
+    4: "face-to-face",
+    5: "face-to-face",
+    6: "face-to-face",
+  };
+}
+
+/** デフォルトの科目設定（空＝未選択時の初期値） */
+export function defaultSubjectSettings(): SubjectSettings {
+  return {
+    semester: "1学期",
+    courseDays: 14,
+    classesPerWeek: 1,
+    selectedDaysOfWeek: [1],
+    deliveryModes: defaultDeliveryModes(),
+  };
+}
