@@ -47,14 +47,59 @@
                   >
                     <template v-if="day.day > 0">
                       <span class="official-day-num">{{ day.day }}</span>
-                      <span
+                      <div
                         v-if="day.scheduleInfo"
                         class="official-day-marker"
                         :class="{
                           'marker-holiday': day.scheduleInfo.isHoliday,
                           'marker-class': !day.scheduleInfo.isHoliday,
                         }"
-                      />
+                      >
+                        <template v-if="day.scheduleInfo.isHoliday"> </template>
+                        <template v-else>
+                          <svg
+                            v-if="day.scheduleInfo.deliveryMode === 'online'"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="marker-icon"
+                          >
+                            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                          </svg>
+                          <svg
+                            v-else
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="marker-icon"
+                          >
+                            <path
+                              d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                            ></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                          </svg>
+                          <span class="marker-text marker-class-number">{{
+                            day.scheduleInfo.classNumber
+                          }}</span>
+                        </template>
+                      </div>
                     </template>
                   </div>
                 </div>
@@ -372,9 +417,28 @@ function gridInnerStyle(month: number) {
   inset: 4px;
   border-radius: 3px;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 8px;
+  line-height: 1;
 }
 .official-day-marker.marker-class {
   background: rgba(0, 102, 204, 0.4);
+  color: #fff;
+}
+.official-day-marker.marker-class .marker-icon,
+.official-day-marker.marker-class .marker-class-number {
+  color: inherit;
+}
+.official-day-marker.marker-class .marker-icon {
+  flex-shrink: 0;
+}
+.official-day-marker.marker-class .marker-class-number {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 .official-day-marker.marker-holiday {
   background: rgba(204, 0, 0, 0.35);

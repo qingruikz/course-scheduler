@@ -482,20 +482,24 @@ const reorderedMonths = computed(() => {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  color: #000;
+  color: #0066cc;
+}
+
+.day-class-info .day-delivery-icon,
+.day-class-info .day-class-number {
+  color: inherit;
 }
 
 .day-delivery-icon {
-  color: #000;
   flex-shrink: 0;
 }
 
 .day-class-number {
   font-size: 8px;
-  color: #000;
   white-space: nowrap;
 }
 
+/* 休講：汉字 休講，红色（与现有一致） */
 .day-holiday-text {
   font-size: 8px;
   color: #cc0000;
