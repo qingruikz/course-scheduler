@@ -89,50 +89,50 @@
         <div class="conditions-header">
           <h2>条件設定</h2>
           <div class="settings-export-actions">
-            <button
-              type="button"
-              class="icon-button settings-icon-button"
-              title="設定をエクスポート"
-              @click="exportSettingsToJson"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+            <div class="dropdown">
+              <button
+                type="button"
+                class="icon-button settings-icon-button"
+                title="設定のインポート・エクスポート"
+                @click="showSettingsMenu = !showSettingsMenu"
               >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="icon-button settings-icon-button"
-              title="設定を復元"
-              @click="triggerImportSettings"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                  ></path>
+                </svg>
+              </button>
+              <div
+                v-if="showSettingsMenu"
+                class="dropdown-menu dropdown-menu-settings"
               >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-            </button>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  @click="onSettingsMenuExport"
+                >
+                  設定をエクスポート
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  @click="onSettingsMenuImport"
+                >
+                  設定をインポート
+                </button>
+              </div>
+            </div>
             <input
               ref="importFileInputRef"
               type="file"
@@ -143,261 +143,236 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="year">年度</label>
-          <select
-            id="year"
-            v-model="storeSelectedYear"
-            class="form-control"
-            @change="onYearChange"
-          >
-            <option v-for="year in availableYears" :key="year" :value="year">
-              {{ formatAcademicYear(year) }}
-            </option>
-          </select>
-          <p class="calendar-info" v-if="createdAt">
-            学年暦更新日: {{ createdAt }}
-          </p>
-        </div>
-
-        <div class="form-group">
-          <label for="subject">科目</label>
-          <div class="subject-row">
-            <div class="subject-input-wrap">
-              <input
-                id="subject"
-                ref="subjectInputRef"
-                v-model="subjectInputValue"
-                type="text"
-                class="form-control subject-input"
-                placeholder="空"
-                autocomplete="off"
-                @focus="showSubjectDropdown = true"
-                @blur="onSubjectInputBlur($event)"
-                @keydown.enter="onSubjectBlur"
-              />
-              <ul
-                v-show="showSubjectDropdown"
-                class="subject-dropdown"
-                role="listbox"
-              >
-                <li
-                  role="option"
-                  class="subject-dropdown-item"
-                  :class="{ active: !currentSubject }"
-                  @mousedown.prevent="selectSubject('')"
-                >
-                  空
-                </li>
-                <li
-                  v-for="s in subjectList"
-                  :key="s"
-                  role="option"
-                  class="subject-dropdown-item"
-                  :class="{ active: currentSubject === s }"
-                  @mousedown.prevent="selectSubject(s)"
-                >
-                  <span
-                    class="subject-dropdown-delete"
-                    title="科目を削除"
-                    @mousedown.prevent.stop="confirmRemoveSubject(s)"
-                  >
-                    ×
-                  </span>
-                  <span class="subject-dropdown-label">{{ s }}</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="semester">学期</label>
-          <select id="semester" v-model="selectedSemester" class="form-control">
-            <option value="1学期">1学期</option>
-            <option value="2学期">2学期</option>
-            <option value="3学期">3学期</option>
-            <option value="4学期">4学期</option>
-            <option value="前期">前期</option>
-            <option value="後期">後期</option>
-            <option value="夏期集中授業期間">夏期集中授業期間</option>
-            <option value="春季集中授業期間">春季集中授業期間</option>
-          </select>
-          <p class="calendar-info" v-if="semesterPeriod">
-            期間: {{ formatPeriodDateShort(semesterPeriod.start) }} ～
-            {{ formatPeriodDateShort(semesterPeriod.end) }}
-          </p>
-        </div>
-
-        <div class="form-group">
-          <label>授業回数</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input type="radio" v-model="selectedCourseDays" :value="7" />
-              <span>7回</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" v-model="selectedCourseDays" :value="14" />
-              <span>14回</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>1週間の授業回数</label>
-          <div class="radio-group">
-            <label class="radio-label">
-              <input
-                type="radio"
-                v-model="selectedClassesPerWeek"
-                :value="1"
-                @change="onClassesPerWeekChange"
-              />
-              <span>週1回</span>
-            </label>
-            <label class="radio-label">
-              <input
-                type="radio"
-                v-model="selectedClassesPerWeek"
-                :value="2"
-                @change="onClassesPerWeekChange"
-              />
-              <span>週2回</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>授業の曜日</label>
-          <div class="day-buttons">
-            <button
-              v-for="(day, index) in dayNames"
-              :key="index"
-              :class="[
-                'day-button',
-                { active: isDaySelected(index as DayOfWeek) },
-              ]"
-              @click="toggleDay(index as DayOfWeek)"
+        <div class="conditions-body">
+          <div class="form-group">
+            <label for="year">年度</label>
+            <select
+              id="year"
+              v-model="storeSelectedYear"
+              class="form-control"
+              @change="onYearChange"
             >
-              {{ day }}
-            </button>
+              <option v-for="year in availableYears" :key="year" :value="year">
+                {{ formatAcademicYear(year) }}
+              </option>
+            </select>
+            <p class="calendar-info" v-if="createdAt">
+              学年暦更新日: {{ createdAt }}
+            </p>
           </div>
-          <div v-if="selectedClassesPerWeek >= 2" class="day-selection-hint">
-            {{ selectedDaysOfWeek.length }} /
-            {{ selectedClassesPerWeek }} 日選択中
-          </div>
-        </div>
 
-        <div class="form-group" v-if="selectedDaysOfWeek.length > 0">
-          <label>授業の実施方法</label>
-          <div
-            v-for="(dayIndex, idx) in selectedDaysOfWeek"
-            :key="dayIndex"
-            class="delivery-mode-group"
-          >
-            <label class="delivery-mode-label">
-              {{ dayNames[dayIndex] }}:
+          <div class="form-group">
+            <label for="subject" class="label-with-hint">
+              科目
+              <span
+                class="hint-icon"
+                title="科目は任意です。入力すると、現在の複数の科目に対応するそれぞれの設定を1つの設定ファイルとして保存でき、次回インポートして利用できます。"
+                aria-label="ヒント"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </span>
             </label>
-            <div class="delivery-mode-options">
-              <label class="radio-label">
+            <div class="subject-row">
+              <div class="subject-input-wrap">
                 <input
-                  type="radio"
-                  :name="`delivery-${dayIndex}`"
-                  value="face-to-face"
-                  :checked="deliveryModes[dayIndex] === 'face-to-face'"
-                  @change="setDeliveryMode(dayIndex, 'face-to-face')"
+                  id="subject"
+                  ref="subjectInputRef"
+                  v-model="subjectInputValue"
+                  type="text"
+                  class="form-control subject-input"
+                  :class="{ 'subject-input-error': subjectExportError }"
+                  placeholder="空"
+                  autocomplete="off"
+                  @focus="onSubjectInputFocus"
+                  @blur="onSubjectInputBlur($event)"
+                  @keydown.enter="onSubjectBlur"
                 />
-                <span>対面</span>
+                <ul
+                  v-show="showSubjectDropdown"
+                  class="subject-dropdown"
+                  role="listbox"
+                >
+                  <li
+                    role="option"
+                    class="subject-dropdown-item"
+                    :class="{ active: !currentSubject }"
+                    @mousedown.prevent="selectSubject('')"
+                  >
+                    空
+                  </li>
+                  <li
+                    v-for="s in subjectList"
+                    :key="s"
+                    role="option"
+                    class="subject-dropdown-item"
+                    :class="{ active: currentSubject === s }"
+                    @mousedown.prevent="selectSubject(s)"
+                  >
+                    <span
+                      class="subject-dropdown-delete"
+                      title="科目を削除"
+                      @mousedown.prevent.stop="confirmRemoveSubject(s)"
+                    >
+                      ×
+                    </span>
+                    <span class="subject-dropdown-label">{{ s }}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <p v-if="subjectExportError" class="subject-error">
+              科目名を入力してください。
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label for="semester">学期</label>
+            <select
+              id="semester"
+              v-model="selectedSemester"
+              class="form-control"
+            >
+              <option value="1学期">1学期</option>
+              <option value="2学期">2学期</option>
+              <option value="3学期">3学期</option>
+              <option value="4学期">4学期</option>
+              <option value="前期">前期</option>
+              <option value="後期">後期</option>
+              <option value="夏期集中授業期間">夏期集中授業期間</option>
+              <option value="春季集中授業期間">春季集中授業期間</option>
+            </select>
+            <p class="calendar-info" v-if="semesterPeriod">
+              期間: {{ formatPeriodDateShort(semesterPeriod.start) }} ～
+              {{ formatPeriodDateShort(semesterPeriod.end) }}
+            </p>
+          </div>
+
+          <div class="form-group">
+            <label>授業回数</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" v-model="selectedCourseDays" :value="7" />
+                <span>7回</span>
               </label>
               <label class="radio-label">
-                <input
-                  type="radio"
-                  :name="`delivery-${dayIndex}`"
-                  value="online"
-                  :checked="deliveryModes[dayIndex] === 'online'"
-                  @change="setDeliveryMode(dayIndex, 'online')"
-                />
-                <span>オンライン</span>
+                <input type="radio" v-model="selectedCourseDays" :value="14" />
+                <span>14回</span>
               </label>
             </div>
           </div>
-        </div>
 
-        <button class="generate-button" @click="generateSchedule">
-          スケジュールを生成
-        </button>
+          <div class="form-group">
+            <label>1週間の授業回数</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input
+                  type="radio"
+                  v-model="selectedClassesPerWeek"
+                  :value="1"
+                  @change="onClassesPerWeekChange"
+                />
+                <span>週1回</span>
+              </label>
+              <label class="radio-label">
+                <input
+                  type="radio"
+                  v-model="selectedClassesPerWeek"
+                  :value="2"
+                  @change="onClassesPerWeekChange"
+                />
+                <span>週2回</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>授業の曜日</label>
+            <div class="day-buttons">
+              <button
+                v-for="(day, index) in dayNames"
+                :key="index"
+                :class="[
+                  'day-button',
+                  { active: isDaySelected(index as DayOfWeek) },
+                ]"
+                @click="toggleDay(index as DayOfWeek)"
+              >
+                {{ day }}
+              </button>
+            </div>
+            <div v-if="selectedClassesPerWeek >= 2" class="day-selection-hint">
+              {{ selectedDaysOfWeek.length }} /
+              {{ selectedClassesPerWeek }} 日選択中
+            </div>
+          </div>
+
+          <div class="form-group" v-if="selectedDaysOfWeek.length > 0">
+            <label>授業の実施方法</label>
+            <div
+              v-for="(dayIndex, idx) in selectedDaysOfWeek"
+              :key="dayIndex"
+              class="delivery-mode-group"
+            >
+              <label class="delivery-mode-label">
+                {{ dayNames[dayIndex] }}:
+              </label>
+              <div class="delivery-mode-options">
+                <label class="radio-label">
+                  <input
+                    type="radio"
+                    :name="`delivery-${dayIndex}`"
+                    value="face-to-face"
+                    :checked="deliveryModes[dayIndex] === 'face-to-face'"
+                    @change="setDeliveryMode(dayIndex, 'face-to-face')"
+                  />
+                  <span>対面</span>
+                </label>
+                <label class="radio-label">
+                  <input
+                    type="radio"
+                    :name="`delivery-${dayIndex}`"
+                    value="online"
+                    :checked="deliveryModes[dayIndex] === 'online'"
+                    @change="setDeliveryMode(dayIndex, 'online')"
+                  />
+                  <span>オンライン</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button class="generate-button" @click="generateSchedule">
+            スケジュールを生成
+          </button>
+        </div>
       </div>
 
       <!-- 右側: 授業日程リストとカレンダー -->
       <div class="right-panel">
         <div class="right-content-grid">
           <div class="schedule-list-section">
-            <div class="schedule-header">
-              <h2>授業日程リスト</h2>
-              <div class="schedule-actions" v-if="schedule.length > 0">
-                <button
-                  class="icon-button ics-button"
-                  @click="openIcsExportModal"
-                  title="カレンダーに追加"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <rect
-                      x="3"
-                      y="4"
-                      width="18"
-                      height="18"
-                      rx="2"
-                      ry="2"
-                    ></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                </button>
-                <button
-                  class="icon-button copy-button"
-                  @click="copyToClipboard"
-                  title="クリップボードにコピー"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <rect
-                      x="9"
-                      y="9"
-                      width="13"
-                      height="13"
-                      rx="2"
-                      ry="2"
-                    ></rect>
-                    <path
-                      d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                    ></path>
-                  </svg>
-                </button>
-                <div class="dropdown">
+            <template v-if="schedule.length > 0">
+              <div class="schedule-header">
+                <h2>授業日程リスト</h2>
+                <div class="schedule-actions" v-if="schedule.length > 0">
                   <button
-                    class="icon-button export-button"
-                    @click="showExportMenu = !showExportMenu"
-                    title="出力"
+                    class="icon-button ics-button"
+                    @click="openIcsExportModal"
+                    title="カレンダーに追加"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -410,105 +385,173 @@
                       stroke-linecap="round"
                       stroke-linejoin="round"
                     >
-                      <path
-                        d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
-                      ></path>
-                      <polyline points="7 10 12 15 17 10"></polyline>
-                      <line x1="12" y1="15" x2="12" y2="3"></line>
+                      <rect
+                        x="3"
+                        y="4"
+                        width="18"
+                        height="18"
+                        rx="2"
+                        ry="2"
+                      ></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
                   </button>
-                  <div v-if="showExportMenu" class="dropdown-menu">
-                    <button
-                      @click="handleExport('excel')"
-                      class="dropdown-item"
+                  <button
+                    class="icon-button copy-button"
+                    @click="copyToClipboard"
+                    title="クリップボードにコピー"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
                     >
-                      Excel
-                    </button>
-                    <button @click="handleExport('txt')" class="dropdown-item">
-                      TXT
-                    </button>
+                      <rect
+                        x="9"
+                        y="9"
+                        width="13"
+                        height="13"
+                        rx="2"
+                        ry="2"
+                      ></rect>
+                      <path
+                        d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                      ></path>
+                    </svg>
+                  </button>
+                  <div class="dropdown">
                     <button
-                      @click="handleExport('markdown')"
-                      class="dropdown-item"
+                      class="icon-button export-button"
+                      @click="showExportMenu = !showExportMenu"
+                      title="出力"
                     >
-                      Markdown
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path
+                          d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                        ></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
                     </button>
-                    <button @click="handleExport('json')" class="dropdown-item">
-                      JSON
-                    </button>
+                    <div v-if="showExportMenu" class="dropdown-menu">
+                      <button
+                        @click="handleExport('excel')"
+                        class="dropdown-item"
+                      >
+                        Excel
+                      </button>
+                      <button
+                        @click="handleExport('txt')"
+                        class="dropdown-item"
+                      >
+                        TXT
+                      </button>
+                      <button
+                        @click="handleExport('markdown')"
+                        class="dropdown-item"
+                      >
+                        Markdown
+                      </button>
+                      <button
+                        @click="handleExport('json')"
+                        class="dropdown-item"
+                      >
+                        JSON
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            <div class="schedule-list" v-if="schedule.length > 0">
-              <div
-                v-for="(item, index) in schedule"
-                :key="index"
-                :class="['schedule-item', { holiday: item.isHoliday }]"
-                :title="scheduleItemTitle(item)"
-              >
-                <span v-if="item.isHoliday">
-                  {{ item.dateStr }} （休講）{{ item.holidayReason }}
-                </span>
-                <span v-else class="schedule-item-content">
-                  <span
-                    class="schedule-date"
-                    :title="`${item.dateStr} 第${item.classNumber}回`"
-                    >{{ item.dateStr }} 第{{ item.classNumber }}回</span
-                  >
-                  <span
-                    :class="[
-                      'delivery-icon-wrapper',
-                      item.deliveryMode === 'online'
-                        ? 'delivery-online'
-                        : 'delivery-face-to-face',
-                    ]"
-                    @mouseenter="showDeliveryPopover($event, item.deliveryMode)"
-                    @mouseleave="hideDeliveryPopover"
-                  >
-                    <svg
-                      v-if="item.deliveryMode === 'online'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      class="delivery-icon"
-                    >
-                      <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-                      <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-                      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-                      <line x1="12" y1="20" x2="12.01" y2="20"></line>
-                    </svg>
-                    <svg
-                      v-else
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      class="delivery-icon"
-                    >
-                      <path
-                        d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                      ></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
+              <div class="schedule-list" v-if="schedule.length > 0">
+                <div
+                  v-for="(item, index) in schedule"
+                  :key="index"
+                  :class="['schedule-item', { holiday: item.isHoliday }]"
+                  :title="scheduleItemTitle(item)"
+                >
+                  <span v-if="item.isHoliday">
+                    {{ item.dateStr }} （休講）{{ item.holidayReason }}
                   </span>
-                </span>
+                  <span v-else class="schedule-item-content">
+                    <span
+                      class="schedule-date"
+                      :title="`${item.dateStr} 第${item.classNumber}回`"
+                      >{{ item.dateStr }} 第{{ item.classNumber }}回</span
+                    >
+                    <span
+                      :class="[
+                        'delivery-icon-wrapper',
+                        item.deliveryMode === 'online'
+                          ? 'delivery-online'
+                          : 'delivery-face-to-face',
+                      ]"
+                      @mouseenter="
+                        showDeliveryPopover($event, item.deliveryMode)
+                      "
+                      @mouseleave="hideDeliveryPopover"
+                    >
+                      <svg
+                        v-if="item.deliveryMode === 'online'"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="delivery-icon"
+                      >
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                      </svg>
+                      <svg
+                        v-else
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="delivery-icon"
+                      >
+                        <path
+                          d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                        ></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                      </svg>
+                    </span>
+                  </span>
+                </div>
               </div>
-            </div>
-            <div v-else class="empty-message">
+            </template>
+            <div v-else class="schedule-empty-message">
               スケジュールを生成してください
             </div>
           </div>
@@ -623,6 +666,15 @@
       @close="closeCalendarAddModal"
       @download-ics="onCalendarAddDownloadIcs"
     />
+    <!-- 科目削除確認 -->
+    <ConfirmModal
+      :visible="showRemoveSubjectConfirm"
+      message="この科目を削除しますか？"
+      confirm-text="削除"
+      cancel-text="キャンセル"
+      @confirm="onConfirmRemoveSubject"
+      @cancel="onCancelRemoveSubject"
+    />
     <!-- 統一メッセージ通知（Teleport で body 直下に表示） -->
     <MessageNotification
       :visible="notification.visible"
@@ -659,6 +711,7 @@ import {
 import CalendarView from "../components/CalendarView.vue";
 import OfficialCalendarView from "../components/OfficialCalendarView.vue";
 import CalendarAddModal from "../components/CalendarAddModal.vue";
+import ConfirmModal from "../components/ConfirmModal.vue";
 import MessageNotification from "../components/MessageNotification.vue";
 import { useRoute, useRouter } from "vue-router";
 import { decodePayload } from "../utils/icsPayload";
@@ -695,10 +748,12 @@ const createdAt = ref<string>("");
 const showCalendarAddModal = ref(false);
 const calendarAddModalSource = ref<"schedule" | "calendar">("schedule");
 const calendarAddModalInitialStep = ref(0);
-const calendarAddModalTarget = ref<
-  "apple" | "google" | "outlook" | "other"
->("apple");
-const calendarAddModalPayload = ref<import("../utils/icsPayload").IcsPayload | null>(null);
+const calendarAddModalTarget = ref<"apple" | "google" | "outlook" | "other">(
+  "apple",
+);
+const calendarAddModalPayload = ref<
+  import("../utils/icsPayload").IcsPayload | null
+>(null);
 const CALENDAR_MODE_KEY = "course-scheduler:useOfficialCalendarBackground";
 const useOfficialCalendarBackground = ref(
   localStorage.getItem(CALENDAR_MODE_KEY) !== "false",
@@ -744,6 +799,7 @@ function showNotification(
 const subjectInputValue = ref("");
 const showSubjectDropdown = ref(false);
 const subjectInputRef = ref<HTMLInputElement | null>(null);
+const subjectExportError = ref(false);
 let subjectBlurTimer: ReturnType<typeof setTimeout> | null = null;
 
 watch(
@@ -766,6 +822,10 @@ function selectSubject(value: string) {
   subjectInputRef.value?.blur();
 }
 
+function onSubjectInputFocus() {
+  showSubjectDropdown.value = true;
+  subjectExportError.value = false;
+}
 function onSubjectInputBlur(e: FocusEvent) {
   const next = e.relatedTarget as HTMLElement | null;
   if (next?.closest?.(".subject-dropdown")) return;
@@ -800,6 +860,7 @@ const deliveryModes = computed(
 );
 const schedule = ref<ScheduleItem[]>([]);
 const showExportMenu = ref(false);
+const showSettingsMenu = ref(false);
 const deliveryPopover = ref<{
   visible: boolean;
   text: string;
@@ -915,11 +976,27 @@ function onSubjectBlur() {
   settingsStore.addSubject(trimmed);
 }
 
+const showRemoveSubjectConfirm = ref(false);
+const subjectToRemove = ref<string | null>(null);
+
 function confirmRemoveSubject(name: string) {
-  if (!confirm("この科目を削除しますか？")) return;
+  subjectToRemove.value = name;
+  showRemoveSubjectConfirm.value = true;
+}
+
+function onConfirmRemoveSubject() {
+  const name = subjectToRemove.value;
+  if (name == null) return;
   const wasCurrent = settingsStore.currentSubject === name;
   settingsStore.removeSubject(name);
   if (wasCurrent) schedule.value = [];
+  showRemoveSubjectConfirm.value = false;
+  subjectToRemove.value = null;
+}
+
+function onCancelRemoveSubject() {
+  showRemoveSubjectConfirm.value = false;
+  subjectToRemove.value = null;
 }
 
 function setDeliveryMode(dayIndex: DayOfWeek, mode: DeliveryMode) {
@@ -938,6 +1015,20 @@ function exportSettingsToJson() {
 }
 function triggerImportSettings() {
   importFileInputRef.value?.click();
+}
+function onSettingsMenuExport() {
+  showSettingsMenu.value = false;
+  if (!currentSubject.value?.trim()) {
+    subjectExportError.value = true;
+    showNotification("保存前に科目名を入力してください。", "error");
+    return;
+  }
+  subjectExportError.value = false;
+  exportSettingsToJson();
+}
+function onSettingsMenuImport() {
+  triggerImportSettings();
+  showSettingsMenu.value = false;
 }
 function onImportFileChange(e: Event) {
   const input = e.target as HTMLInputElement;
@@ -983,7 +1074,7 @@ function openCalendarIcsModal() {
 }
 
 function onCalendarAddDownloadIcs(
-  payload: import("../utils/icsPayload").IcsPayload
+  payload: import("../utils/icsPayload").IcsPayload,
 ) {
   if (payload.type === "schedule") {
     settingsStore.patchCurrentSubjectSettings({
@@ -1003,7 +1094,10 @@ function checkCalendarModalUrlParams() {
     const decoded = decodePayload(q);
     if (decoded) {
       const validTarget =
-        target === "apple" || target === "google" || target === "outlook" || target === "other"
+        target === "apple" ||
+        target === "google" ||
+        target === "outlook" ||
+        target === "other"
           ? target
           : "apple";
       calendarAddModalSource.value =
@@ -1012,10 +1106,12 @@ function checkCalendarModalUrlParams() {
       calendarAddModalTarget.value = validTarget;
       calendarAddModalPayload.value = decoded;
       showCalendarAddModal.value = true;
-      const { action: _a, target: _t, q: _q, ...rest } = route.query as Record<
-        string,
-        string
-      >;
+      const {
+        action: _a,
+        target: _t,
+        q: _q,
+        ...rest
+      } = route.query as Record<string, string>;
       router.replace({ path: route.path, query: rest });
     }
   }
@@ -1026,7 +1122,7 @@ watch(
   () => {
     checkCalendarModalUrlParams();
   },
-  { immediate: false }
+  { immediate: false },
 );
 
 onMounted(async () => {
@@ -1048,6 +1144,7 @@ function handleClickOutside(event: MouseEvent) {
   const target = event.target as HTMLElement;
   if (!target.closest(".dropdown")) {
     showExportMenu.value = false;
+    showSettingsMenu.value = false;
   }
 }
 
@@ -1335,18 +1432,25 @@ function hideDeliveryPopover() {
   font-style: italic;
 }
 
+.subject-error {
+  font-size: 12px;
+  color: #c62828;
+  margin: 6px 0 0 0;
+}
+
 .main-container {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
   width: 100%;
   max-width: none;
   margin: 0;
   padding: 0;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
-  overflow: auto;
-  align-content: start;
+  overflow: hidden;
+  align-content: stretch;
 }
 
 .left-panel {
@@ -1354,7 +1458,18 @@ function hideDeliveryPopover() {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  height: fit-content;
+  min-height: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.conditions-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 12px;
 }
 
 .left-panel h2 {
@@ -1373,6 +1488,23 @@ function hideDeliveryPopover() {
   margin-bottom: 8px;
   color: #333;
   font-size: 13px;
+}
+
+.form-group label.label-with-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hint-icon {
+  display: inline-flex;
+  color: #888;
+  cursor: help;
+  vertical-align: middle;
+}
+
+.hint-icon:hover {
+  color: #555;
 }
 
 .form-control {
@@ -1459,6 +1591,15 @@ function hideDeliveryPopover() {
   width: 100%;
   box-sizing: border-box;
 }
+.subject-input-error {
+  border: 2px solid #c62828;
+  box-shadow: none;
+}
+.subject-input-error:focus {
+  outline: none;
+  border: 2px solid #c62828;
+  box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.25);
+}
 .subject-dropdown {
   position: absolute;
   left: 0;
@@ -1530,6 +1671,7 @@ function hideDeliveryPopover() {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 18px;
+  flex-shrink: 0;
 }
 .conditions-header h2 {
   margin: 0;
@@ -1553,6 +1695,18 @@ function hideDeliveryPopover() {
   flex-direction: column;
   gap: 20px;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.schedule-empty-message {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #666;
 }
 
 .day-selection-hint {
@@ -1584,8 +1738,12 @@ function hideDeliveryPopover() {
 .right-content-grid {
   display: grid;
   grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 20px;
   min-width: 0;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .schedule-list-section {
@@ -1596,6 +1754,8 @@ function hideDeliveryPopover() {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .schedule-header {
@@ -1603,6 +1763,7 @@ function hideDeliveryPopover() {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
+  flex-shrink: 0;
 }
 
 .schedule-header h2 {
@@ -1642,12 +1803,12 @@ function hideDeliveryPopover() {
 }
 
 .settings-icon-button {
-  background: #9e9e9e;
-  color: #fff;
+  background: transparent;
+  color: rgb(51, 51, 51);
 }
 .settings-icon-button:hover {
-  background: #858585;
-  color: #fff;
+  background: transparent;
+  color: rgb(51, 51, 51);
 }
 
 .ics-button {
@@ -1682,6 +1843,9 @@ function hideDeliveryPopover() {
   z-index: 1000;
   min-width: 120px;
 }
+.dropdown-menu-settings {
+  min-width: 150px;
+}
 
 .dropdown-item {
   display: block;
@@ -1707,7 +1871,7 @@ function hideDeliveryPopover() {
 
 .schedule-list {
   flex: 1;
-  max-height: calc(100vh - 300px);
+  min-height: 0;
   overflow-y: auto;
   border: 1px solid #eee;
   border-radius: 4px;
@@ -1799,20 +1963,13 @@ function hideDeliveryPopover() {
   border-top-color: #333;
 }
 
-.empty-message {
-  text-align: center;
-  color: #999;
-  font-size: 14px;
-}
-
 .calendar-section {
   background: white;
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  max-height: calc(100vh - 200px);
-  min-width: 0;
+  min-height: 0;
 }
 
 .calendar-mode-switch {
@@ -1901,14 +2058,21 @@ function hideDeliveryPopover() {
 @media (max-width: 1024px) {
   .main-container {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 
   .left-panel {
     order: 2;
+    min-height: 0;
   }
 
   .right-panel {
     order: 1;
+    min-height: 0;
+  }
+
+  .schedule-list-section {
+    min-height: 0;
   }
 }
 </style>

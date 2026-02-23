@@ -1,6 +1,6 @@
 <template>
-  <div v-if="visible" class="modal-overlay" @click="closeModal">
-    <div class="modal-content" @click.stop>
+  <div v-if="visible" class="modal-overlay">
+    <div class="modal-content">
       <div class="modal-header">
         <button
           v-if="step > 0 && !canGoBackFromStep2"
