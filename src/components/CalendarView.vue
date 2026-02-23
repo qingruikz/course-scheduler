@@ -1,108 +1,118 @@
 <template>
   <div class="calendar-view">
     <h3>カレンダー表示</h3>
-    <div class="calendar-link">
-      <a :href="calendarPdfUrl" target="_blank" rel="noopener noreferrer">
-        大学公式の学年暦PDF
-      </a>
-    </div>
-    <div class="calendars-grid">
+    <div class="calendars-scroll">
       <div
-        v-for="month in displayedMonths"
-        :key="month.key"
-        class="calendar-month"
+        class="calendars-grid"
+        :class="{ 'calendars-grid-single': !twoColumns }"
       >
-        <div class="calendar-header">{{ month.year }}年{{ month.month }}月</div>
-        <div class="calendar-weekdays">
-          <div v-for="day in weekdays" :key="day" class="weekday">
-            {{ day }}
+        <div
+          v-for="month in reorderedMonths"
+          :key="month.key"
+          class="calendar-month"
+        >
+          <div class="calendar-header">
+            {{ month.year }}年{{ month.month }}月
           </div>
-        </div>
-        <div class="calendar-days">
-          <div
-            v-for="(day, index) in month.days"
-            :key="index"
-            :class="[
-              'calendar-day',
-              { highlighted: day.isHighlighted },
-              { holiday: day.isHoliday },
-            ]"
-            :title="
-              day.scheduleInfo
-                ? day.scheduleInfo.isHoliday
-                  ? `（休講）${day.scheduleInfo.holidayReason}`
-                  : `第${day.scheduleInfo.classNumber}回 ${
-                      day.scheduleInfo.deliveryMode === 'online'
-                        ? 'オンライン'
-                        : '対面'
-                    }`
-                : ''
-            "
-          >
-            <div v-if="day.day > 0" class="day-content">
-              <span class="day-number">{{ day.day }}</span>
-              <div v-if="day.scheduleInfo" class="day-info">
-                <div v-if="day.scheduleInfo.isHoliday" class="day-holiday-text">
-                  休講
-                </div>
-                <div v-else class="day-class-info">
-                  <svg
-                    v-if="day.scheduleInfo.deliveryMode === 'online'"
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="day-delivery-icon"
+          <div class="calendar-weekdays">
+            <div v-for="day in weekdays" :key="day" class="weekday">
+              {{ day }}
+            </div>
+          </div>
+          <div class="calendar-days">
+            <div
+              v-for="(day, index) in month.days"
+              :key="index"
+              :class="[
+                'calendar-day',
+                { highlighted: day.isHighlighted },
+                { holiday: day.isHoliday },
+              ]"
+              :title="
+                day.scheduleInfo
+                  ? day.scheduleInfo.isHoliday
+                    ? `（休講）${day.scheduleInfo.holidayReason}`
+                    : `第${day.scheduleInfo.classNumber}回 ${
+                        day.scheduleInfo.deliveryMode === 'online'
+                          ? 'オンライン'
+                          : '対面'
+                      }`
+                  : ''
+              "
+            >
+              <div v-if="day.day > 0" class="day-content">
+                <span class="day-number">{{ day.day }}</span>
+                <div v-if="day.scheduleInfo" class="day-info">
+                  <div
+                    v-if="day.scheduleInfo.isHoliday"
+                    class="day-holiday-text"
                   >
-                    <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-                    <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-                    <line x1="12" y1="20" x2="12.01" y2="20"></line>
-                  </svg>
-                  <svg
-                    v-else
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    class="day-delivery-icon"
-                  >
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                  <span class="day-class-number">{{
-                    day.scheduleInfo.classNumber
-                  }}</span>
+                    休講
+                  </div>
+                  <div v-else class="day-class-info">
+                    <svg
+                      v-if="day.scheduleInfo.deliveryMode === 'online'"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="day-delivery-icon"
+                    >
+                      <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+                      <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+                      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                      <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                    </svg>
+                    <svg
+                      v-else
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="day-delivery-icon"
+                    >
+                      <path
+                        d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+                      ></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="day-class-number">{{
+                      day.scheduleInfo.classNumber
+                    }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <span v-else class="day-number empty"></span>
-            <div v-if="day.scheduleInfo" class="popover">
-              <div class="popover-content">
-                <div class="popover-date">{{ day.scheduleInfo.dateStr }}</div>
-                <div v-if="day.scheduleInfo.isHoliday" class="popover-holiday">
-                  （休講）{{ day.scheduleInfo.holidayReason }}
-                </div>
-                <div v-else class="popover-class">
-                  <div>第{{ day.scheduleInfo.classNumber }}回</div>
-                  <div class="popover-delivery">
-                    {{
-                      day.scheduleInfo.deliveryMode === "online"
-                        ? "オンライン"
-                        : "対面"
-                    }}
+              <span v-else class="day-number empty"></span>
+              <div v-if="day.scheduleInfo" class="popover">
+                <div class="popover-content">
+                  <div class="popover-date">{{ day.scheduleInfo.dateStr }}</div>
+                  <div
+                    v-if="day.scheduleInfo.isHoliday"
+                    class="popover-holiday"
+                  >
+                    （休講）{{ day.scheduleInfo.holidayReason }}
+                  </div>
+                  <div v-else class="popover-class">
+                    <div>第{{ day.scheduleInfo.classNumber }}回</div>
+                    <div class="popover-delivery">
+                      {{
+                        day.scheduleInfo.deliveryMode === "online"
+                          ? "オンライン"
+                          : "対面"
+                      }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -119,13 +129,13 @@ import { computed } from "vue";
 import type { ScheduleItem } from "../types";
 import { formatDateShort } from "../utils/scheduleGenerator";
 
-const props = defineProps<{
-  schedule: ScheduleItem[];
-}>();
-
-// 大学公式の学年暦PDFのURL
-const calendarPdfUrl =
-  "https://www.musashino-u.ac.jp/student-life/campus_life/calendar.html";
+const props = withDefaults(
+  defineProps<{
+    schedule: ScheduleItem[];
+    twoColumns?: boolean;
+  }>(),
+  { twoColumns: true },
+);
 
 // 曜日のラベル（日曜日から土曜日）
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -146,7 +156,7 @@ const holidayDates = computed(() => {
   return new Set(
     props.schedule
       .filter((item) => item.isHoliday)
-      .map((item) => formatDateShort(item.date))
+      .map((item) => formatDateShort(item.date)),
   );
 });
 
@@ -215,6 +225,15 @@ const displayedMonths = computed(() => {
   const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
   // 最大日付（スケジュールの終了日）を取得
   const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  // 学期より1ヶ月多く表示（確認用）
+  let endYear = maxDate.getFullYear();
+  let endMonth = maxDate.getMonth();
+  if (endMonth < 11) {
+    endMonth += 1;
+  } else {
+    endMonth = 0;
+    endYear += 1;
+  }
 
   // 生成する月データを格納する配列
   const months: Array<{
@@ -233,11 +252,8 @@ const displayedMonths = computed(() => {
   // 処理開始年月を設定（最小日付の年月）
   let currentYear = minDate.getFullYear();
   let currentMonth = minDate.getMonth();
-  // 処理終了年月を設定（最大日付の年月）
-  const endYear = maxDate.getFullYear();
-  const endMonth = maxDate.getMonth();
 
-  // 最小日付から最大日付までのすべての月をループ処理
+  // 最小日付から最大日付+1ヶ月までのすべての月をループ処理
   while (
     currentYear < endYear ||
     (currentYear === endYear && currentMonth <= endMonth)
@@ -314,6 +330,18 @@ const displayedMonths = computed(() => {
 
   return months;
 });
+
+/** グリッド表示用：上→下、左→右の順（列優先）に並べ替え */
+const reorderedMonths = computed(() => {
+  const m = displayedMonths.value;
+  const cols = props.twoColumns ? 2 : 1;
+  if (m.length === 0) return m;
+  const numRows = Math.ceil(m.length / cols);
+  return Array.from(
+    { length: m.length },
+    (_, i) => m[Math.floor(i / cols) + (i % cols) * numRows]!,
+  );
+});
 </script>
 
 <style scoped>
@@ -326,45 +354,19 @@ const displayedMonths = computed(() => {
   margin-bottom: 10px;
 }
 
-.calendar-link {
-  margin-bottom: 10px;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.calendar-icon-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #0066cc;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.calendar-icon-button:hover {
-  background-color: #f0f0f0;
-}
-
-.calendar-link a {
-  color: #0066cc;
-  text-decoration: none;
-}
-
-.calendar-link a:hover {
-  text-decoration: underline;
+.calendars-scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+  margin-top: 8px;
 }
 
 .calendars-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
-  margin-top: 8px;
+}
+.calendars-grid.calendars-grid-single {
+  grid-template-columns: 1fr;
 }
 
 .calendar-month {

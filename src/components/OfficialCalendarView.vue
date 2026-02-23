@@ -2,8 +2,11 @@
   <div class="official-calendar-view">
     <h3>カレンダー表示（学年暦背景）</h3>
     <div class="calendars-scroll">
-      <div class="calendars-grid">
-        <template v-for="month in displayedMonths" :key="month.key">
+      <div
+        class="calendars-grid"
+        :class="{ 'calendars-grid-single': !twoColumns }"
+      >
+        <template v-for="month in reorderedMonths" :key="month.key">
           <div v-if="getMonthLayout(month.month)" class="official-month-card">
             <!-- 曜日は背景画像の上に表示（画像自体に曜日行なし） -->
             <div
@@ -72,10 +75,14 @@ import { computed } from "vue";
 import type { ScheduleItem, CalendarLayout, MonthLayout } from "../types";
 import { formatDateShort } from "../utils/scheduleGenerator";
 
-const props = defineProps<{
-  schedule: ScheduleItem[];
-  layout: CalendarLayout | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    schedule: ScheduleItem[];
+    layout: CalendarLayout | null;
+    twoColumns?: boolean;
+  }>(),
+  { twoColumns: true },
+);
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -111,6 +118,15 @@ const displayedMonths = computed(() => {
   const dates = props.schedule.map((item) => item.date);
   const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
   const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  // 学期より1ヶ月多く表示（確認用）
+  let endYear = maxDate.getFullYear();
+  let endMonth = maxDate.getMonth();
+  if (endMonth < 11) {
+    endMonth += 1;
+  } else {
+    endMonth = 0;
+    endYear += 1;
+  }
   const months: Array<{
     key: string;
     year: number;
@@ -125,8 +141,6 @@ const displayedMonths = computed(() => {
   }> = [];
   let currentYear = minDate.getFullYear();
   let currentMonth = minDate.getMonth();
-  const endYear = maxDate.getFullYear();
-  const endMonth = maxDate.getMonth();
 
   while (
     currentYear < endYear ||
@@ -177,6 +191,18 @@ const displayedMonths = computed(() => {
     }
   }
   return months;
+});
+
+/** グリッド表示用：上→下、左→右の順（列優先）に並べ替え */
+const reorderedMonths = computed(() => {
+  const m = displayedMonths.value;
+  const cols = props.twoColumns ? 2 : 1;
+  if (m.length === 0) return m;
+  const numRows = Math.ceil(m.length / cols);
+  return Array.from(
+    { length: m.length },
+    (_, i) => m[Math.floor(i / cols) + (i % cols) * numRows]!,
+  );
 });
 
 function getMonthLayout(month: number): MonthLayout | undefined {
@@ -274,8 +300,11 @@ function gridInnerStyle(month: number) {
 }
 .calendars-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
+}
+.calendars-grid.calendars-grid-single {
+  grid-template-columns: 1fr;
 }
 .official-month-card {
   display: flex;
@@ -340,8 +369,8 @@ function gridInnerStyle(month: number) {
 }
 .official-day-marker {
   position: absolute;
-  inset: 2px;
-  border-radius: 4px;
+  inset: 4px;
+  border-radius: 3px;
   pointer-events: none;
 }
 .official-day-marker.marker-class {

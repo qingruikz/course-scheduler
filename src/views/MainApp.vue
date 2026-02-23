@@ -223,6 +223,10 @@
             <option value="夏期集中授業期間">夏期集中授業期間</option>
             <option value="春季集中授業期間">春季集中授業期間</option>
           </select>
+          <p class="calendar-info" v-if="semesterPeriod">
+            期間: {{ formatPeriodDateShort(semesterPeriod.start) }} ～
+            {{ formatPeriodDateShort(semesterPeriod.end) }}
+          </p>
         </div>
 
         <div class="form-group">
@@ -326,12 +330,6 @@
 
       <!-- 右側: 授業日程リストとカレンダー -->
       <div class="right-panel">
-        <div class="semester-period" v-if="semesterPeriod">
-          <strong>学期期間:</strong>
-          {{ formatPeriodDate(semesterPeriod.start) }} ～
-          {{ formatPeriodDate(semesterPeriod.end) }}
-        </div>
-
         <div class="right-content-grid">
           <div class="schedule-list-section">
             <div class="schedule-header">
@@ -447,12 +445,15 @@
                 v-for="(item, index) in schedule"
                 :key="index"
                 :class="['schedule-item', { holiday: item.isHoliday }]"
+                :title="scheduleItemTitle(item)"
               >
                 <span v-if="item.isHoliday">
                   {{ item.dateStr }} （休講）{{ item.holidayReason }}
                 </span>
                 <span v-else class="schedule-item-content">
-                  <span class="schedule-date"
+                  <span
+                    class="schedule-date"
+                    :title="`${item.dateStr} 第${item.classNumber}回`"
                     >{{ item.dateStr }} 第{{ item.classNumber }}回</span
                   >
                   <span
@@ -513,22 +514,36 @@
           </div>
 
           <div class="calendar-section">
-            <div class="calendar-mode-switch">
-              <span class="switch-label">学年暦背景</span>
-              <label class="toggle-switch">
-                <input
-                  v-model="useOfficialCalendarBackground"
-                  type="checkbox"
-                  class="toggle-switch-input"
-                />
-                <span class="toggle-switch-slider"></span>
-              </label>
+            <div v-if="schedule.length > 0" class="calendar-mode-switch">
+              <div class="calendar-switch-item">
+                <span class="switch-label">学年暦背景</span>
+                <label class="toggle-switch">
+                  <input
+                    v-model="useOfficialCalendarBackground"
+                    type="checkbox"
+                    class="toggle-switch-input"
+                  />
+                  <span class="toggle-switch-slider"></span>
+                </label>
+              </div>
+              <div class="calendar-switch-item">
+                <span class="switch-label">2列表示</span>
+                <label class="toggle-switch">
+                  <input
+                    v-model="calendarTwoColumns"
+                    type="checkbox"
+                    class="toggle-switch-input"
+                  />
+                  <span class="toggle-switch-slider"></span>
+                </label>
+              </div>
             </div>
             <CalendarView
               v-if="schedule.length > 0 && !useOfficialCalendarBackground"
               :schedule="schedule"
               :yearData="currentYearData"
               :year="storeSelectedYear ?? 0"
+              :two-columns="calendarTwoColumns"
             />
             <OfficialCalendarView
               v-else-if="
@@ -538,6 +553,9 @@
               "
               :schedule="schedule"
               :layout="calendarLayout"
+              :semester-start="semesterPeriod?.start"
+              :semester-end="semesterPeriod?.end"
+              :two-columns="calendarTwoColumns"
             />
             <div
               v-else-if="
@@ -681,12 +699,21 @@ const CALENDAR_MODE_KEY = "course-scheduler:useOfficialCalendarBackground";
 const useOfficialCalendarBackground = ref(
   localStorage.getItem(CALENDAR_MODE_KEY) !== "false",
 );
+const CALENDAR_TWO_COLUMNS_KEY = "course-scheduler:calendarTwoColumns";
+const calendarTwoColumns = ref(
+  localStorage.getItem(CALENDAR_TWO_COLUMNS_KEY) !== "false",
+);
 const calendarLayout = ref<CalendarLayout | null>(null);
 const calendarTestImageUrl =
   (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/") + "calendar_2026.png";
 watch(
   useOfficialCalendarBackground,
   (v) => localStorage.setItem(CALENDAR_MODE_KEY, String(v)),
+  { immediate: true },
+);
+watch(
+  calendarTwoColumns,
+  (v) => localStorage.setItem(CALENDAR_TWO_COLUMNS_KEY, String(v)),
   { immediate: true },
 );
 
@@ -1114,18 +1141,19 @@ function openIcsExportModal() {
   showIcsExportModal.value = true;
 }
 
+function scheduleItemTitle(item: ScheduleItem): string {
+  if (item.isHoliday) {
+    return `${item.dateStr} （休講）${item.holidayReason}`;
+  }
+  const deliveryModeText =
+    item.deliveryMode === "online" ? "オンライン" : "対面";
+  return `${item.dateStr} 第${item.classNumber}回 ${deliveryModeText}`;
+}
+
 function copyToClipboard() {
   if (schedule.value.length === 0) return;
 
-  const lines = schedule.value.map((item) => {
-    if (item.isHoliday) {
-      return `${item.dateStr} （休講）${item.holidayReason}`;
-    } else {
-      const deliveryModeText =
-        item.deliveryMode === "online" ? "オンライン" : "対面";
-      return `${item.dateStr} 第${item.classNumber}回 ${deliveryModeText}`;
-    }
-  });
+  const lines = schedule.value.map((item) => scheduleItemTitle(item));
 
   const content = lines.join("\n");
   navigator.clipboard
@@ -1144,6 +1172,12 @@ function formatPeriodDate(dateStr: string | unknown): string {
   const str = typeof dateStr === "string" ? dateStr : String(dateStr);
   const [year, month, day] = str.split("-");
   return `${year}年${month}月${day}日`;
+}
+
+function formatPeriodDateShort(dateStr: string | unknown): string {
+  const str = typeof dateStr === "string" ? dateStr : String(dateStr);
+  const [year, month, day] = str.split("-");
+  return `${year}/${month}/${day}`;
 }
 
 function showDeliveryPopover(
@@ -1181,7 +1215,7 @@ function hideDeliveryPopover() {
   position: relative;
   width: 100%;
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   flex-shrink: 0;
 }
 
@@ -1258,7 +1292,7 @@ function hideDeliveryPopover() {
 
 .main-container {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: 12px;
   width: 100%;
   max-width: none;
@@ -1476,15 +1510,6 @@ function hideDeliveryPopover() {
   min-width: 0;
 }
 
-.semester-period {
-  background: white;
-  padding: 15px 25px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  font-size: 14px;
-  color: #333;
-}
-
 .day-selection-hint {
   margin-top: 8px;
   font-size: 12px;
@@ -1513,7 +1538,7 @@ function hideDeliveryPopover() {
 
 .right-content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 350px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
   gap: 20px;
   min-width: 0;
 }
@@ -1650,6 +1675,15 @@ function hideDeliveryPopover() {
   border-radius: 4px;
   background: #e3f2fd;
   font-size: 13px;
+  overflow: hidden;
+}
+
+/* 休講時のみ：長いテキストを1行で省略、ホバーで title に全文表示 */
+.schedule-item.holiday > span:first-child {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .schedule-item.holiday {
@@ -1660,16 +1694,23 @@ function hideDeliveryPopover() {
 .schedule-item-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
 }
 
 .schedule-date {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .delivery-icon-wrapper {
+  flex-shrink: 0;
+  width: 24px;
   position: relative;
   display: flex;
   align-items: center;
@@ -1716,6 +1757,7 @@ function hideDeliveryPopover() {
 .empty-message {
   text-align: center;
   color: #999;
+  font-size: 14px;
 }
 
 .calendar-section {
@@ -1731,9 +1773,15 @@ function hideDeliveryPopover() {
 .calendar-mode-switch {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 16px 24px;
   margin-bottom: 12px;
   font-size: 13px;
+}
+.calendar-switch-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .switch-label {
   color: #666;

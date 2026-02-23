@@ -138,7 +138,7 @@ export function defaultDeliveryModes(): Record<DayOfWeek, DeliveryMode> {
 export function defaultSubjectSettings(): SubjectSettings {
   return {
     semester: "1学期",
-    courseDays: 14,
+    courseDays: 7,
     classesPerWeek: 1,
     selectedDaysOfWeek: [1],
     deliveryModes: defaultDeliveryModes(),
