@@ -2060,23 +2060,42 @@ function hideDeliveryPopover() {
 }
 
 @media (max-width: 1024px) {
+  .app {
+    overflow-y: auto;
+  }
+
   .main-container {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    overflow: visible;
+    flex: 0 0 auto;
+    min-height: min-content;
   }
 
   .left-panel {
-    order: 2;
-    min-height: 0;
-  }
-
-  .right-panel {
     order: 1;
     min-height: 0;
   }
 
+  .right-panel {
+    order: 2;
+    min-height: 0;
+    height: auto;
+  }
+
+  .right-content-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(280px, auto);
+    overflow: visible;
+    flex: none;
+  }
+
   .schedule-list-section {
     min-height: 0;
+  }
+
+  .calendar-section {
+    min-height: 280px;
   }
 }
 </style>
