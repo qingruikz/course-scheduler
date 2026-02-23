@@ -25,13 +25,25 @@
             </svg>
           </button>
           <div v-if="showAdminMenu" class="dropdown-menu dropdown-menu-admin">
-            <button type="button" class="dropdown-item" @click="onAdminMenuAddCalendar">
+            <button
+              type="button"
+              class="dropdown-item"
+              @click="onAdminMenuAddCalendar"
+            >
               学年暦をカレンダーに追加
             </button>
-            <button type="button" class="dropdown-item" @click="onAdminMenuOfficialCalendar">
+            <button
+              type="button"
+              class="dropdown-item"
+              @click="onAdminMenuOfficialCalendar"
+            >
               大学公式カレンダー
             </button>
-            <button type="button" class="dropdown-item" @click="onAdminMenuCalendarMapper">
+            <button
+              type="button"
+              class="dropdown-item"
+              @click="onAdminMenuCalendarMapper"
+            >
               カレンダー配置管理
             </button>
           </div>
@@ -267,7 +279,7 @@
             <label>授業の曜日</label>
             <div class="day-buttons">
               <button
-                v-for="(day, index) in dayNames"
+                v-for="(shortName, index) in dayShortNames"
                 :key="index"
                 :class="[
                   'day-button',
@@ -275,7 +287,7 @@
                 ]"
                 @click="toggleDay(index as DayOfWeek)"
               >
-                {{ day }}
+                {{ shortName }}
               </button>
             </div>
             <div v-if="selectedClassesPerWeek >= 2" class="day-selection-hint">
@@ -292,7 +304,7 @@
               class="delivery-mode-group"
             >
               <label class="delivery-mode-label">
-                {{ dayNames[dayIndex] }}:
+                {{ dayShortNames[dayIndex] }}曜:
               </label>
               <div class="delivery-mode-options">
                 <label class="radio-label">
@@ -684,6 +696,7 @@ const dayNames = [
   "金曜日",
   "土曜日",
 ];
+const dayShortNames = ["日", "月", "火", "水", "木", "金", "土"];
 
 const calendarData = ref<CalendarData | null>(null);
 const currentYearData = ref<YearData | null>(null);
@@ -1506,14 +1519,14 @@ function hideDeliveryPopover() {
 
 .day-buttons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 6px;
 }
 
 .day-button {
   flex: 1;
-  min-width: 60px;
-  padding: 8px 4px;
+  min-width: 0;
+  padding: 6px 2px;
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
@@ -1688,23 +1701,41 @@ function hideDeliveryPopover() {
 }
 
 .delivery-mode-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 10px;
   padding: 8px;
   background: #f9f9f9;
   border-radius: 4px;
 }
 
-.delivery-mode-label {
-  display: block;
+.delivery-mode-group .delivery-mode-label {
   font-weight: bold;
-  margin-bottom: 6px;
+  margin: 0;
+  margin-bottom: 0;
   color: #333;
-  font-size: 12px;
+  font-size: 13px;
+  flex-shrink: 0;
+  line-height: 1.4;
 }
 
 .delivery-mode-options {
   display: flex;
-  gap: 15px;
+  align-items: center;
+  gap: 5px;
+}
+
+.delivery-mode-options .radio-label {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.delivery-mode-options .radio-label input[type="radio"] {
+  margin: 0;
+  vertical-align: middle;
 }
 
 .right-content-grid {
