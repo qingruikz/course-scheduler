@@ -2,76 +2,40 @@
   <div class="app">
     <header class="header">
       <div class="header-right-buttons">
-        <a
-          class="header-link-button"
-          href="https://www.musashino-u.ac.jp/student-life/campus_life/calendar.html"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="大学公式カレンダーへ"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <div class="dropdown">
+          <button
+            type="button"
+            class="calendar-icon-button-header admin-icon-button-header"
+            title="メニュー"
+            @click="showAdminMenu = !showAdminMenu"
           >
-            <path
-              d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
-            ></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
-        </a>
-        <button
-          type="button"
-          class="calendar-icon-button-header"
-          title="カレンダーに追加"
-          @click="openCalendarIcsModal"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
-        </button>
-        <router-link
-          to="/admin/calendar-mapper"
-          class="calendar-icon-button-header"
-          title="カレンダー配置管理"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="3"></circle>
-            <path
-              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
-            ></path>
-          </svg>
-        </router-link>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <div v-if="showAdminMenu" class="dropdown-menu dropdown-menu-admin">
+            <button type="button" class="dropdown-item" @click="onAdminMenuAddCalendar">
+              学年暦をカレンダーに追加
+            </button>
+            <button type="button" class="dropdown-item" @click="onAdminMenuOfficialCalendar">
+              大学公式カレンダー
+            </button>
+            <button type="button" class="dropdown-item" @click="onAdminMenuCalendarMapper">
+              カレンダー配置管理
+            </button>
+          </div>
+        </div>
       </div>
       <div class="header-content">
         <div class="header-left">
@@ -398,35 +362,6 @@
                       <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
                   </button>
-                  <button
-                    class="icon-button copy-button"
-                    @click="copyToClipboard"
-                    title="クリップボードにコピー"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <rect
-                        x="9"
-                        y="9"
-                        width="13"
-                        height="13"
-                        rx="2"
-                        ry="2"
-                      ></rect>
-                      <path
-                        d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
-                      ></path>
-                    </svg>
-                  </button>
                   <div class="dropdown">
                     <button
                       class="icon-button export-button"
@@ -451,7 +386,16 @@
                         <line x1="12" y1="15" x2="12" y2="3"></line>
                       </svg>
                     </button>
-                    <div v-if="showExportMenu" class="dropdown-menu">
+                    <div
+                      v-if="showExportMenu"
+                      class="dropdown-menu dropdown-menu-export"
+                    >
+                      <button
+                        @click="handleExport('copy')"
+                        class="dropdown-item"
+                      >
+                        クリップボードにコピー
+                      </button>
                       <button
                         @click="handleExport('excel')"
                         class="dropdown-item"
@@ -860,6 +804,9 @@ const deliveryModes = computed(
 );
 const schedule = ref<ScheduleItem[]>([]);
 const showExportMenu = ref(false);
+const showAdminMenu = ref(false);
+const OFFICIAL_CALENDAR_URL =
+  "https://www.musashino-u.ac.jp/student-life/campus_life/calendar.html";
 const showSettingsMenu = ref(false);
 const deliveryPopover = ref<{
   visible: boolean;
@@ -1073,6 +1020,19 @@ function openCalendarIcsModal() {
   showCalendarAddModal.value = true;
 }
 
+function onAdminMenuCalendarMapper() {
+  showAdminMenu.value = false;
+  router.push("/admin/calendar-mapper");
+}
+function onAdminMenuOfficialCalendar() {
+  showAdminMenu.value = false;
+  window.open(OFFICIAL_CALENDAR_URL, "_blank", "noopener,noreferrer");
+}
+function onAdminMenuAddCalendar() {
+  showAdminMenu.value = false;
+  openCalendarIcsModal();
+}
+
 function onCalendarAddDownloadIcs(
   payload: import("../utils/icsPayload").IcsPayload,
 ) {
@@ -1145,6 +1105,7 @@ function handleClickOutside(event: MouseEvent) {
   if (!target.closest(".dropdown")) {
     showExportMenu.value = false;
     showSettingsMenu.value = false;
+    showAdminMenu.value = false;
   }
 }
 
@@ -1267,6 +1228,9 @@ function exportJSON() {
 
 function handleExport(type: string) {
   switch (type) {
+    case "copy":
+      copyToClipboard();
+      break;
     case "excel":
       exportExcel();
       break;
@@ -1423,6 +1387,14 @@ function hideDeliveryPopover() {
 .header-link-button:hover,
 .calendar-icon-button-header:hover {
   background-color: #f0f0f0;
+}
+
+.admin-icon-button-header {
+  color: #555;
+}
+.admin-icon-button-header:hover {
+  color: #333;
+  background-color: #e8e8e8;
 }
 
 .calendar-info {
@@ -1819,14 +1791,6 @@ function hideDeliveryPopover() {
   background: #f57c00;
 }
 
-.copy-button {
-  background: #2196f3;
-}
-
-.copy-button:hover {
-  background: #1976d2;
-}
-
 .export-button {
   background: #4caf50;
 }
@@ -1845,6 +1809,15 @@ function hideDeliveryPopover() {
 }
 .dropdown-menu-settings {
   min-width: 150px;
+}
+.dropdown-menu-export {
+  min-width: 180px;
+}
+
+.dropdown-menu-admin {
+  right: 0;
+  left: auto;
+  min-width: 220px;
 }
 
 .dropdown-item {
