@@ -717,8 +717,13 @@ const ua = computed(() => getUA());
 const envDisplayLabel = computed(() => {
   const e = ua.value;
   const labels: Record<string, string> = {
-    mac: "Mac", windows: "Windows", ios: "iOS", android: "Android", other: "その他",
-    safari: "Safari", chrome: "Chrome",
+    mac: "Mac",
+    windows: "Windows",
+    ios: "iOS",
+    android: "Android",
+    other: "その他",
+    safari: "Safari",
+    chrome: "Chrome",
   };
   return `${labels[e.os] ?? e.os} + ${labels[e.browser] ?? e.browser}`;
 });
