@@ -30,7 +30,7 @@
         <button
           type="button"
           class="calendar-icon-button-header"
-          title="学年暦を ICS でダウンロード"
+          title="カレンダーに追加"
           @click="openCalendarIcsModal"
         >
           <svg
@@ -338,7 +338,7 @@
                 <button
                   class="icon-button ics-button"
                   @click="openIcsExportModal"
-                  title="ICS でダウンロード"
+                  title="カレンダーに追加"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -600,31 +600,28 @@
     >
       {{ deliveryPopover.text }}
     </div>
-    <!-- ICS 出力モーダル -->
-    <IcsExportModal
+    <!-- 統一カレンダー追加モーダル -->
+    <CalendarAddModal
+      :visible="showCalendarAddModal"
+      :source="calendarAddModalSource"
       :year="storeSelectedYear ?? 0"
-      :course-days="selectedCourseDays"
-      :classes-per-week="selectedClassesPerWeek"
-      :visible="showIcsExportModal"
       :schedule="schedule"
       :semester="selectedSemester"
+      :course-days="selectedCourseDays"
+      :classes-per-week="selectedClassesPerWeek"
       :selected-days-of-week="selectedDaysOfWeek"
       :delivery-modes="deliveryModes"
       :initial-subject-name="currentSubject"
       :initial-ics-options="
         settingsStore.currentSubjectSettings.icsExportOptions
       "
-      @close="closeIcsExportModal"
-      @submit="onIcsExportSubmit"
-    />
-    <!-- 学年暦 ICS ダウンロードモーダル（ダウンロード後も閉じない） -->
-    <CalendarIcsExportModal
-      :year="storeSelectedYear ?? 0"
-      :visible="showCalendarIcsModal"
       :events="calendarEventsForYear"
       :initial-calendar-ics-options="settingsStore.calendarIcsOptions"
-      @close="closeCalendarIcsModal"
-      @download="onCalendarIcsDownload"
+      :initial-step="calendarAddModalInitialStep"
+      :initial-calendar-target="calendarAddModalTarget"
+      :initial-payload="calendarAddModalPayload"
+      @close="closeCalendarAddModal"
+      @download-ics="onCalendarAddDownloadIcs"
     />
     <!-- 統一メッセージ通知（Teleport で body 直下に表示） -->
     <MessageNotification
@@ -658,20 +655,22 @@ import {
   exportToTXT,
   exportToMarkdown,
   exportToJSON,
-  exportToICS,
-  exportCalendarEventsToIcs,
 } from "../utils/export";
 import CalendarView from "../components/CalendarView.vue";
 import OfficialCalendarView from "../components/OfficialCalendarView.vue";
-import IcsExportModal from "../components/IcsExportModal.vue";
-import CalendarIcsExportModal from "../components/CalendarIcsExportModal.vue";
+import CalendarAddModal from "../components/CalendarAddModal.vue";
 import MessageNotification from "../components/MessageNotification.vue";
+import { useRoute, useRouter } from "vue-router";
+import { decodePayload } from "../utils/icsPayload";
+import { downloadIcsFromPayload } from "../utils/icsDownload";
 import type { IcsExportOptions, CalendarEventsIcsOptions } from "../types";
 import { formatAcademicYear } from "../utils/japaneseEra";
 import { convertYamlToCalendarData } from "../utils/yamlConverter";
 import { loadCalendarLayout } from "../utils/calendarLayoutLoader";
 import type { CalendarLayout } from "../types";
 
+const route = useRoute();
+const router = useRouter();
 const settingsStore = useSettingsStore();
 const {
   subjectList,
@@ -693,8 +692,13 @@ const calendarData = ref<CalendarData | null>(null);
 const currentYearData = ref<YearData | null>(null);
 const availableYears = ref<number[]>([]);
 const createdAt = ref<string>("");
-const showIcsExportModal = ref(false);
-const showCalendarIcsModal = ref(false);
+const showCalendarAddModal = ref(false);
+const calendarAddModalSource = ref<"schedule" | "calendar">("schedule");
+const calendarAddModalInitialStep = ref(0);
+const calendarAddModalTarget = ref<
+  "apple" | "google" | "outlook" | "other"
+>("apple");
+const calendarAddModalPayload = ref<import("../utils/icsPayload").IcsPayload | null>(null);
 const CALENDAR_MODE_KEY = "course-scheduler:useOfficialCalendarBackground";
 const useOfficialCalendarBackground = ref(
   localStorage.getItem(CALENDAR_MODE_KEY) !== "false",
@@ -957,35 +961,80 @@ function onImportFileChange(e: Event) {
   input.value = "";
 }
 
-function closeIcsExportModal() {
-  showIcsExportModal.value = false;
+function closeCalendarAddModal() {
+  showCalendarAddModal.value = false;
+  calendarAddModalPayload.value = null;
 }
 
-function onIcsExportSubmit(options: IcsExportOptions) {
-  settingsStore.patchCurrentSubjectSettings({ icsExportOptions: options });
-  exportToICS(schedule.value, options, selectedSemester.value);
+function openIcsExportModal() {
+  calendarAddModalSource.value = "schedule";
+  calendarAddModalInitialStep.value = 0;
+  calendarAddModalTarget.value = "apple";
+  calendarAddModalPayload.value = null;
+  showCalendarAddModal.value = true;
 }
 
 function openCalendarIcsModal() {
-  showCalendarIcsModal.value = true;
+  calendarAddModalSource.value = "calendar";
+  calendarAddModalInitialStep.value = 0;
+  calendarAddModalTarget.value = "apple";
+  calendarAddModalPayload.value = null;
+  showCalendarAddModal.value = true;
 }
 
-function closeCalendarIcsModal() {
-  showCalendarIcsModal.value = false;
+function onCalendarAddDownloadIcs(
+  payload: import("../utils/icsPayload").IcsPayload
+) {
+  if (payload.type === "schedule") {
+    settingsStore.patchCurrentSubjectSettings({
+      icsExportOptions: payload.icsExportOptions,
+    });
+  } else {
+    settingsStore.setCalendarIcsOptions(payload.calendarIcsOptions);
+  }
+  downloadIcsFromPayload(payload, calendarData.value);
 }
 
-function onCalendarIcsDownload(options: CalendarEventsIcsOptions) {
-  settingsStore.setCalendarIcsOptions(options);
-  const events = calendarEventsForYear.value;
-  if (events.length === 0) return;
-  exportCalendarEventsToIcs(events, options, storeSelectedYear.value ?? 0);
-  // ダウンロード後もモーダルは閉じない
+function checkCalendarModalUrlParams() {
+  const action = route.query.action as string | undefined;
+  const target = route.query.target as string | undefined;
+  const q = route.query.q as string | undefined;
+  if (action === "calendar_modal" && q) {
+    const decoded = decodePayload(q);
+    if (decoded) {
+      const validTarget =
+        target === "apple" || target === "google" || target === "outlook" || target === "other"
+          ? target
+          : "apple";
+      calendarAddModalSource.value =
+        decoded.type === "schedule" ? "schedule" : "calendar";
+      calendarAddModalInitialStep.value = 2;
+      calendarAddModalTarget.value = validTarget;
+      calendarAddModalPayload.value = decoded;
+      showCalendarAddModal.value = true;
+      const { action: _a, target: _t, q: _q, ...rest } = route.query as Record<
+        string,
+        string
+      >;
+      router.replace({ path: route.path, query: rest });
+    }
+  }
 }
+
+watch(
+  () => route.query,
+  () => {
+    checkCalendarModalUrlParams();
+  },
+  { immediate: false }
+);
 
 onMounted(async () => {
   // 統合されたcalendar_data.jsonを読み込む
   await loadCalendarData();
   await loadCalendarLayoutForYear(storeSelectedYear.value ?? 0);
+
+  checkCalendarModalUrlParams();
 
   // ドロップダウンメニューの外部クリックを検出
   document.addEventListener("click", handleClickOutside);
@@ -1135,10 +1184,6 @@ function handleExport(type: string) {
       break;
   }
   showExportMenu.value = false;
-}
-
-function openIcsExportModal() {
-  showIcsExportModal.value = true;
 }
 
 function scheduleItemTitle(item: ScheduleItem): string {
