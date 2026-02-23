@@ -34,7 +34,7 @@ const props = withDefaults(
     url: string;
     title?: string;
   }>(),
-  { title: "iPad/iPhone で開く" },
+  { title: "スマホ/タブレットでダウンロード" },
 );
 
 const emit = defineEmits<{ close: [] }>();

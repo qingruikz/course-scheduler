@@ -130,7 +130,7 @@
           :disabled="!hasClassDays"
           @click="openQrModal"
         >
-          iPad/iPhone で開く
+          スマホ/タブレットでダウンロード
         </button>
         <button
           type="button"
@@ -331,8 +331,7 @@ function openQrModal() {
   };
   const encoded = encodePayload(payload);
   const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
-  qrModalUrl.value =
-    window.location.origin + base + "/d?q=" + encoded;
+  qrModalUrl.value = window.location.origin + base + "/d?q=" + encoded;
   showQrModal.value = true;
 }
 

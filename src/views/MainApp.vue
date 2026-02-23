@@ -338,7 +338,7 @@
                 <button
                   class="icon-button ics-button"
                   @click="openIcsExportModal"
-                  title="カレンダー（ICS）に出力"
+                  title="ICS でダウンロード"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"

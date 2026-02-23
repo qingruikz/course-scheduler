@@ -76,7 +76,7 @@
           :disabled="!hasEvents || includeTypes.length === 0"
           @click="openQrModal"
         >
-          iPad/iPhone で開く
+          スマホ/タブレットでダウンロード
         </button>
         <button
           type="button"
