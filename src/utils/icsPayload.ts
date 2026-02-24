@@ -2,6 +2,7 @@ import type {
   SemesterOption,
   CourseDays,
   ClassesPerWeek,
+  ClassSlot,
   DayOfWeek,
   DeliveryMode,
   IcsExportOptions,
@@ -15,8 +16,7 @@ export interface ScheduleIcsPayload {
   semester: SemesterOption;
   courseDays: CourseDays;
   classesPerWeek: ClassesPerWeek;
-  selectedDaysOfWeek: DayOfWeek[];
-  deliveryModes: Record<DayOfWeek, DeliveryMode>;
+  classSlots: ClassSlot[];
   icsExportOptions: IcsExportOptions;
 }
 
@@ -54,6 +54,23 @@ export function encodePayload(payload: IcsPayload): string {
   return base64UrlEncode(JSON.stringify(payload));
 }
 
+/** v1 形式の schedule ペイロードを classSlots に変換 */
+function migrateSchedulePayloadToV2(d: unknown): ScheduleIcsPayload {
+  const p = d as Record<string, unknown>;
+  if (Array.isArray(p.classSlots) && p.classSlots.length > 0) {
+    return d as ScheduleIcsPayload;
+  }
+  const days = (p.selectedDaysOfWeek ?? [1]) as DayOfWeek[];
+  const modes = (p.deliveryModes ?? {}) as Record<DayOfWeek, DeliveryMode>;
+  const perWeek = (p.classesPerWeek ?? 1) as ClassesPerWeek;
+  const classSlots: ClassSlot[] = days.slice(0, perWeek).map((dow) => ({
+    deliveryType: (modes[dow] ?? "face-to-face") as DeliveryMode,
+    dayOfWeek: dow,
+    period: 1 as 1 | 2 | 3 | 4 | 5 | 6 | 7,
+  }));
+  return { ...p, classSlots } as ScheduleIcsPayload;
+}
+
 /** base64url をデコードしてペイロードを返す。不正な場合は null */
 export function decodePayload(q: string): IcsPayload | null {
   try {
@@ -61,7 +78,7 @@ export function decodePayload(q: string): IcsPayload | null {
     const data = JSON.parse(json) as unknown;
     if (!data || typeof data !== "object") return null;
     const type = (data as { type?: string }).type;
-    if (type === "schedule") return data as ScheduleIcsPayload;
+    if (type === "schedule") return migrateSchedulePayloadToV2(data);
     if (type === "calendar") return data as CalendarIcsPayload;
     return null;
   } catch {

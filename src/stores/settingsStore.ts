@@ -4,15 +4,18 @@ import type {
   SettingsExport,
   CalendarEventsIcsOptions,
 } from "../types";
-import { defaultSubjectSettings, SETTINGS_EXPORT_VERSION } from "../types";
+import {
+  defaultSubjectSettings,
+  migrateSubjectSettingsV1ToV2,
+  SETTINGS_EXPORT_VERSION,
+} from "../types";
 
 const DEFAULT_EXPORT_FILENAME = "授業スケジュールジェネレーター設定.json";
 
 function cloneSubjectSettings(s: SubjectSettings): SubjectSettings {
   return {
     ...s,
-    selectedDaysOfWeek: [...s.selectedDaysOfWeek],
-    deliveryModes: { ...s.deliveryModes },
+    classSlots: s.classSlots.map((slot) => ({ ...slot })),
     icsExportOptions: s.icsExportOptions
       ? {
           ...s.icsExportOptions,
@@ -20,6 +23,31 @@ function cloneSubjectSettings(s: SubjectSettings): SubjectSettings {
         }
       : undefined,
   };
+}
+
+/** v1 形式の SubjectSettings を v2（classSlots）に変換 */
+function ensureSubjectSettingsV2(
+  s: Record<string, unknown>,
+): SubjectSettings | null {
+  if (!s || typeof s.semester !== "string") return null;
+  const hasClassSlots =
+    Array.isArray(s.classSlots) && s.classSlots.length > 0;
+  if (hasClassSlots) {
+    return s as unknown as SubjectSettings;
+  }
+  const days = s.selectedDaysOfWeek;
+  if (!Array.isArray(days)) return null;
+  const classSlots = migrateSubjectSettingsV1ToV2({
+    selectedDaysOfWeek: days as number[],
+    deliveryModes: s.deliveryModes as Record<number, string> | undefined,
+    classesPerWeek: s.classesPerWeek as number | undefined,
+  });
+  const base = defaultSubjectSettings();
+  return {
+    ...base,
+    ...s,
+    classSlots,
+  } as SubjectSettings;
 }
 
 export const useSettingsStore = defineStore("settings", {
@@ -82,9 +110,7 @@ export const useSettingsStore = defineStore("settings", {
       const next: SubjectSettings = {
         ...base,
         ...partial,
-        selectedDaysOfWeek:
-          partial.selectedDaysOfWeek ?? base.selectedDaysOfWeek,
-        deliveryModes: partial.deliveryModes ?? base.deliveryModes,
+        classSlots: partial.classSlots ?? base.classSlots,
       };
       this.subjectSettings[cur] = next;
     },
@@ -126,7 +152,7 @@ export const useSettingsStore = defineStore("settings", {
         if (!data || typeof data !== "object")
           return { success: false, error: "無効なJSONです。" };
         const v = (data as { version?: number }).version;
-        if (v !== SETTINGS_EXPORT_VERSION)
+        if (v !== 1 && v !== SETTINGS_EXPORT_VERSION)
           return {
             success: false,
             error: `未対応の設定バージョンです（version: ${v}）。`,
@@ -139,9 +165,13 @@ export const useSettingsStore = defineStore("settings", {
         this.subjectSettings = {};
         if (d.subjectSettings && typeof d.subjectSettings === "object") {
           for (const key of Object.keys(d.subjectSettings)) {
-            const s = d.subjectSettings[key];
-            if (s && typeof s.semester === "string" && Array.isArray(s.selectedDaysOfWeek))
-              this.subjectSettings[key] = cloneSubjectSettings(s as SubjectSettings);
+            const s = d.subjectSettings[key] as unknown as Record<
+              string,
+              unknown
+            >;
+            const migrated = ensureSubjectSettingsV2(s ?? {});
+            if (migrated)
+              this.subjectSettings[key] = cloneSubjectSettings(migrated);
           }
         }
         if (!this.subjectSettings[""]) {

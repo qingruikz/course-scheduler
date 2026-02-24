@@ -29,7 +29,11 @@ export function exportToExcel(
       };
     } else {
       const deliveryModeText =
-        item.deliveryMode === "online" ? "オンライン" : "対面";
+        item.deliveryMode === "online"
+          ? "オンライン"
+          : item.deliveryMode === "on-demand"
+            ? "オンライン（オンデマンド）"
+            : "対面";
       return {
         日付: item.dateStr,
         曜日: item.dayOfWeek,
@@ -56,7 +60,11 @@ export function exportToTXT(
       return `${item.dateStr} （休講）${item.holidayReason}`;
     } else {
       const deliveryModeText =
-        item.deliveryMode === "online" ? "オンライン" : "対面";
+        item.deliveryMode === "online"
+          ? "オンライン"
+          : item.deliveryMode === "on-demand"
+            ? "オンライン（オンデマンド）"
+            : "対面";
       return `${item.dateStr} 第${item.classNumber}回 ${deliveryModeText}`;
     }
   });
@@ -80,7 +88,11 @@ export function exportToMarkdown(
       return `- ${item.dateStr} （休講）${item.holidayReason}`;
     } else {
       const deliveryModeText =
-        item.deliveryMode === "online" ? "オンライン" : "対面";
+        item.deliveryMode === "online"
+          ? "オンライン"
+          : item.deliveryMode === "on-demand"
+            ? "オンライン（オンデマンド）"
+            : "対面";
       return `- ${item.dateStr} 第${item.classNumber}回 ${deliveryModeText}`;
     }
   });

@@ -620,8 +620,7 @@ const props = withDefaults(
     year?: number;
     courseDays?: CourseDays;
     classesPerWeek?: ClassesPerWeek;
-    selectedDaysOfWeek?: DayOfWeek[];
-    deliveryModes?: Record<DayOfWeek, DeliveryMode>;
+    classSlots?: import("../types").ClassSlot[];
     initialSubjectName?: string;
     initialIcsOptions?: IcsExportOptions;
     // calendar props
@@ -638,11 +637,7 @@ const props = withDefaults(
     year: 0,
     courseDays: 14,
     classesPerWeek: 1,
-    selectedDaysOfWeek: () => [],
-    deliveryModes: () =>
-      Object.fromEntries(
-        [0, 1, 2, 3, 4, 5, 6].map((d) => [d, "face-to-face" as DeliveryMode]),
-      ) as Record<DayOfWeek, DeliveryMode>,
+    classSlots: () => [],
     events: () => [],
     initialStep: 0,
     initialCalendarTarget: undefined,
@@ -791,11 +786,14 @@ function includeTypesLabel(types: string[]): string {
 }
 
 function initSlots() {
-  const days = props.selectedDaysOfWeek ?? [];
-  slots.value = days.map((dayOfWeek) => ({
-    dayOfWeek,
-    period: 1 as IcsSlot["period"],
-    room: props.deliveryModes?.[dayOfWeek] === "online" ? "オンライン" : "",
+  const cs = props.classSlots ?? [];
+  slots.value = cs.map((slot) => ({
+    dayOfWeek: slot.dayOfWeek,
+    period:
+      slot.deliveryType === "on-demand"
+        ? null
+        : (slot.period ?? 1) as IcsSlot["period"],
+    room: slot.deliveryType === "online" ? "オンライン" : "",
   }));
 }
 
@@ -840,17 +838,7 @@ function buildPayload(): IcsPayload | null {
     const y = props.year ?? 0;
     const courseDays = props.courseDays ?? 14;
     const classesPerWeek = (props.classesPerWeek ?? 1) as 1 | 2;
-    const deliveryModes =
-      props.deliveryModes ??
-      ({
-        0: "face-to-face",
-        1: "face-to-face",
-        2: "face-to-face",
-        3: "face-to-face",
-        4: "face-to-face",
-        5: "face-to-face",
-        6: "face-to-face",
-      } as Record<DayOfWeek, DeliveryMode>);
+    const classSlots = props.classSlots ?? [];
     const icsExportOptions: IcsExportOptions = {
       subjectName: subjectName.value.trim(),
       slots: slots.value.map((s) => ({
@@ -869,8 +857,7 @@ function buildPayload(): IcsPayload | null {
       semester: props.semester ?? "前期",
       courseDays,
       classesPerWeek,
-      selectedDaysOfWeek: props.selectedDaysOfWeek ?? [],
-      deliveryModes,
+      classSlots,
       icsExportOptions,
     } as ScheduleIcsPayload;
   } else {
@@ -974,10 +961,10 @@ watch(
 );
 
 watch(
-  () => [props.visible, props.source, props.selectedDaysOfWeek] as const,
-  ([visible, src, days]) => {
+  () => [props.visible, props.source, props.classSlots] as const,
+  ([visible, src, classSlots]) => {
     if (visible) {
-      if (src === "schedule" && Array.isArray(days)) {
+      if (src === "schedule" && Array.isArray(classSlots)) {
         const opts = props.initialIcsOptions;
         if (opts) {
           subjectName.value = opts.subjectName ?? "";

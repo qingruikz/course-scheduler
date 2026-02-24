@@ -52,20 +52,9 @@
       <div class="header-content">
         <div class="header-left">
           <h1>大学授業スケジュールジェネレーター</h1>
-          <div class="header-year-block" v-if="availableYears.length">
-            <select
-              v-model="storeSelectedYear"
-              class="academic-year academic-year-select"
-              @change="onYearChange"
-            >
-              <option v-for="year in availableYears" :key="year" :value="year">
-                {{ formatAcademicYear(year) }}
-              </option>
-            </select>
-            <p class="academic-year-update" v-if="createdAt">
-              (学年暦更新日: {{ createdAt }})
-            </p>
-          </div>
+          <span class="academic-year" v-if="storeSelectedYear">
+            {{ formatAcademicYear(storeSelectedYear ?? 0) }}
+          </span>
         </div>
       </div>
     </header>
@@ -131,6 +120,23 @@
         </div>
 
         <div class="conditions-body">
+          <div class="form-group" v-if="availableYears.length">
+            <label for="year">年度</label>
+            <select
+              id="year"
+              v-model="storeSelectedYear"
+              class="form-control"
+              @change="onYearChange"
+            >
+              <option v-for="year in availableYears" :key="year" :value="year">
+                {{ formatAcademicYear(year) }}
+              </option>
+            </select>
+            <p class="calendar-info" v-if="createdAt">
+              学年暦更新日: {{ createdAt }}
+            </p>
+          </div>
+
           <div class="form-group">
             <label for="subject" class="label-with-hint">
               科目
@@ -269,59 +275,102 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label>授業の曜日</label>
-            <div class="day-buttons">
-              <button
-                v-for="(shortName, index) in dayShortNames"
-                :key="index"
-                :class="[
-                  'day-button',
-                  { active: isDaySelected(index as DayOfWeek) },
-                ]"
-                @click="toggleDay(index as DayOfWeek)"
+          <div class="form-group slot-section">
+            <label>授業の実施方法等</label>
+            <div class="slot-section-inner">
+              <div
+                v-for="(slot, slotIdx) in classSlots"
+                :key="slotIdx"
+                class="slot-row"
               >
-                {{ shortName }}
-              </button>
+            <div class="slot-field">
+              <span class="slot-label">実施方法</span>
+              <div class="slot-delivery-wrap">
+                <button
+                  :ref="(el) => { slotDeliveryTriggerRefs[slotIdx] = el as HTMLButtonElement | null }"
+                  type="button"
+                  class="slot-delivery-trigger"
+                  :title="deliveryTypeLabel(slot.deliveryType)"
+                  @click="toggleDeliveryDropdown(slotIdx)"
+                >
+                  <DeliveryIcon :mode="slot.deliveryType" class="slot-icon" />
+                </button>
+                <Teleport to="body">
+                  <div
+                    v-if="openDeliveryDropdownIdx === slotIdx"
+                    class="slot-delivery-menu slot-delivery-menu-teleported"
+                    :style="deliveryMenuStyle(slotIdx)"
+                  >
+                    <button
+                      type="button"
+                      class="slot-delivery-option"
+                      @click="setSlotDelivery(slotIdx, 'face-to-face')"
+                    >
+                      <DeliveryIcon mode="face-to-face" class="slot-option-icon" />
+                      <span>対面</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="slot-delivery-option"
+                      @click="setSlotDelivery(slotIdx, 'online')"
+                    >
+                      <DeliveryIcon mode="online" class="slot-option-icon" />
+                      <span>オンライン（同時双方向型）</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="slot-delivery-option"
+                      @click="setSlotDelivery(slotIdx, 'on-demand')"
+                    >
+                      <DeliveryIcon mode="on-demand" class="slot-option-icon" />
+                      <span>オンライン（オンデマンド）</span>
+                    </button>
+                  </div>
+                </Teleport>
+              </div>
             </div>
-            <div v-if="selectedClassesPerWeek >= 2" class="day-selection-hint">
-              {{ selectedDaysOfWeek.length }} /
-              {{ selectedClassesPerWeek }} 日選択中
+            <div class="slot-field">
+              <span class="slot-label">{{
+                isRealtime(slot) ? "授業日" : "配信日"
+              }}</span>
+              <div class="slot-day-wrap">
+                <span class="slot-day-display">{{
+                  dayShortNames[slot.dayOfWeek]
+                }}</span>
+                <select
+                  :value="slot.dayOfWeek"
+                  class="slot-select slot-day-select"
+                  :title="isRealtime(slot) ? '授業日' : '配信日'"
+                  @change="updateSlotDay(slotIdx, Number(($event.target as HTMLSelectElement).value) as DayOfWeek)"
+                >
+                  <option
+                    v-for="(fullName, d) in dayNames"
+                    :key="d"
+                    :value="d"
+                  >
+                    {{ fullName }}
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div v-if="isRealtime(slot)" class="slot-field">
+              <span class="slot-label">時限</span>
+              <select
+                :value="slot.period ?? 1"
+                class="slot-select slot-period-select"
+                title="時限"
+                @change="updateSlotPeriod(slotIdx, Number(($event.target as HTMLSelectElement).value) as 1|2|3|4|5|6|7)"
+              >
+                <option
+                  v-for="p in PERIOD_TIMES"
+                  :key="p.period"
+                  :value="p.period"
+                >
+                  {{ p.period }}限
+                </option>
+              </select>
             </div>
           </div>
-
-          <div class="form-group" v-if="selectedDaysOfWeek.length > 0">
-            <label>授業の実施方法</label>
-            <div
-              v-for="(dayIndex, idx) in selectedDaysOfWeek"
-              :key="dayIndex"
-              class="delivery-mode-group"
-            >
-              <label class="delivery-mode-label">
-                {{ dayShortNames[dayIndex] }}曜:
-              </label>
-              <div class="delivery-mode-options">
-                <label class="radio-label">
-                  <input
-                    type="radio"
-                    :name="`delivery-${dayIndex}`"
-                    value="face-to-face"
-                    :checked="deliveryModes[dayIndex] === 'face-to-face'"
-                    @change="setDeliveryMode(dayIndex, 'face-to-face')"
-                  />
-                  <span>対面</span>
-                </label>
-                <label class="radio-label">
-                  <input
-                    type="radio"
-                    :name="`delivery-${dayIndex}`"
-                    value="online"
-                    :checked="deliveryModes[dayIndex] === 'online'"
-                    @change="setDeliveryMode(dayIndex, 'online')"
-                  />
-                  <span>オンライン</span>
-                </label>
-              </div>
             </div>
           </div>
 
@@ -451,51 +500,20 @@
                         'delivery-icon-wrapper',
                         item.deliveryMode === 'online'
                           ? 'delivery-online'
-                          : 'delivery-face-to-face',
+                          : item.deliveryMode === 'on-demand'
+                            ? 'delivery-on-demand'
+                            : 'delivery-face-to-face',
                       ]"
                       @mouseenter="
                         showDeliveryPopover($event, item.deliveryMode)
                       "
                       @mouseleave="hideDeliveryPopover"
                     >
-                      <svg
-                        v-if="item.deliveryMode === 'online'"
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                      <DeliveryIcon
+                        :mode="item.deliveryMode ?? 'face-to-face'"
+                        :size="16"
                         class="delivery-icon"
-                      >
-                        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-                        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-                        <line x1="12" y1="20" x2="12.01" y2="20"></line>
-                      </svg>
-                      <svg
-                        v-else
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        class="delivery-icon"
-                      >
-                        <path
-                          d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                        ></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                      </svg>
+                      />
                     </span>
                   </span>
                 </div>
@@ -602,8 +620,7 @@
       :semester="selectedSemester"
       :course-days="selectedCourseDays"
       :classes-per-week="selectedClassesPerWeek"
-      :selected-days-of-week="selectedDaysOfWeek"
-      :delivery-modes="deliveryModes"
+      :class-slots="classSlots"
       :initial-subject-name="currentSubject"
       :initial-ics-options="
         settingsStore.currentSubjectSettings.icsExportOptions
@@ -647,7 +664,9 @@ import type {
   ClassesPerWeek,
   DayOfWeek,
   DeliveryMode,
+  ClassSlot,
 } from "../types";
+import { defaultClassSlot } from "../types";
 import {
   generateSchedule as generateScheduleUtil,
   ScheduleGenerationError,
@@ -661,6 +680,8 @@ import {
 import CalendarView from "../components/CalendarView.vue";
 import OfficialCalendarView from "../components/OfficialCalendarView.vue";
 import CalendarAddModal from "../components/CalendarAddModal.vue";
+import DeliveryIcon from "../components/DeliveryIcon.vue";
+import { PERIOD_TIMES } from "../utils/periodTimes";
 import ConfirmModal from "../components/ConfirmModal.vue";
 import MessageNotification from "../components/MessageNotification.vue";
 import { useRoute, useRouter } from "vue-router";
@@ -803,12 +824,24 @@ const selectedClassesPerWeek = computed({
   set: (v: ClassesPerWeek) =>
     settingsStore.patchCurrentSubjectSettings({ classesPerWeek: v }),
 });
-const selectedDaysOfWeek = computed(
-  () => settingsStore.currentSubjectSettings.selectedDaysOfWeek,
+const classSlots = computed(
+  () => settingsStore.currentSubjectSettings.classSlots,
 );
-const deliveryModes = computed(
-  () => settingsStore.currentSubjectSettings.deliveryModes,
+const openDeliveryDropdownIdx = ref<number | null>(null);
+const slotDeliveryTriggerRefs = ref<Record<number, HTMLButtonElement | null>>(
+  {},
 );
+
+function deliveryMenuStyle(slotIdx: number): Record<string, string> {
+  const el = slotDeliveryTriggerRefs.value[slotIdx];
+  if (!el) return { visibility: "hidden" };
+  const rect = el.getBoundingClientRect();
+  return {
+    position: "fixed",
+    top: `${rect.bottom + 2}px`,
+    left: `${rect.left}px`,
+  };
+}
 const schedule = ref<ScheduleItem[]>([]);
 const showExportMenu = ref(false);
 const showAdminMenu = ref(false);
@@ -951,15 +984,6 @@ function onConfirmRemoveSubject() {
 function onCancelRemoveSubject() {
   showRemoveSubjectConfirm.value = false;
   subjectToRemove.value = null;
-}
-
-function setDeliveryMode(dayIndex: DayOfWeek, mode: DeliveryMode) {
-  settingsStore.patchCurrentSubjectSettings({
-    deliveryModes: {
-      ...settingsStore.currentSubjectSettings.deliveryModes,
-      [dayIndex]: mode,
-    },
-  });
 }
 
 const importFileInputRef = ref<HTMLInputElement | null>(null);
@@ -1116,42 +1140,85 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-// updateSemesterPeriod関数は不要になったので削除
+function isRealtime(slot: ClassSlot): boolean {
+  return slot.deliveryType === "face-to-face" || slot.deliveryType === "online";
+}
 
-function isDaySelected(index: DayOfWeek): boolean {
-  return selectedDaysOfWeek.value.includes(index);
+function deliveryTypeLabel(mode: DeliveryMode): string {
+  if (mode === "face-to-face") return "対面";
+  if (mode === "online") return "オンライン（同時双方向型）";
+  return "オンライン（オンデマンド）";
+}
+
+function toggleDeliveryDropdown(slotIdx: number) {
+  const willOpen = openDeliveryDropdownIdx.value !== slotIdx;
+  openDeliveryDropdownIdx.value = willOpen ? slotIdx : null;
+  if (willOpen) {
+    setTimeout(() => {
+      const close = () => {
+        openDeliveryDropdownIdx.value = null;
+        document.removeEventListener("click", close);
+      };
+      document.addEventListener("click", close);
+    }, 0);
+  }
+}
+
+function setSlotDelivery(slotIdx: number, mode: DeliveryMode) {
+  const slots = [...classSlots.value];
+  const slot = { ...slots[slotIdx]! };
+  slot.deliveryType = mode;
+  if (mode === "on-demand") {
+    delete slot.period;
+  } else if (!slot.period) {
+    slot.period = 1;
+  }
+  slots[slotIdx] = slot;
+  settingsStore.patchCurrentSubjectSettings({ classSlots: slots });
+  openDeliveryDropdownIdx.value = null;
+}
+
+function updateSlotDay(slotIdx: number, dayOfWeek: DayOfWeek) {
+  const slots = classSlots.value.map((s, i) =>
+    i === slotIdx ? { ...s, dayOfWeek } : s,
+  );
+  settingsStore.patchCurrentSubjectSettings({ classSlots: slots });
+}
+
+function updateSlotPeriod(
+  slotIdx: number,
+  period: 1 | 2 | 3 | 4 | 5 | 6 | 7,
+) {
+  const slots = classSlots.value.map((s, i) =>
+    i === slotIdx ? { ...s, period } : s,
+  );
+  settingsStore.patchCurrentSubjectSettings({ classSlots: slots });
 }
 
 function onClassesPerWeekChange() {
   const perWeek = selectedClassesPerWeek.value;
-  const days = selectedDaysOfWeek.value;
+  const slots = classSlots.value;
   if (perWeek === 1) {
-    const next =
-      days.length > 0 && days[0] !== undefined ? [days[0]] : [1 as DayOfWeek];
-    settingsStore.patchCurrentSubjectSettings({ selectedDaysOfWeek: next });
+    settingsStore.patchCurrentSubjectSettings({
+      classSlots: slots.length > 0 ? [slots[0]!] : [defaultClassSlot()],
+    });
+  } else if (perWeek === 2 && slots.length === 1) {
+    const second = { ...defaultClassSlot(), dayOfWeek: 3 as DayOfWeek };
+    settingsStore.patchCurrentSubjectSettings({
+      classSlots: [slots[0]!, second],
+    });
   }
 }
 
-function toggleDay(index: DayOfWeek) {
-  const perWeek = selectedClassesPerWeek.value;
-  const days = [...selectedDaysOfWeek.value];
-  if (perWeek === 1) {
-    settingsStore.patchCurrentSubjectSettings({
-      selectedDaysOfWeek: [index],
-    });
-    return;
+function validateRtSlotUniqueness(): boolean {
+  const rtSlots = classSlots.value.filter(isRealtime);
+  const seen = new Set<string>();
+  for (const s of rtSlots) {
+    const key = `${s.dayOfWeek}-${s.period ?? 1}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
   }
-  const currentIndex = days.indexOf(index);
-  if (currentIndex >= 0) {
-    days.splice(currentIndex, 1);
-  } else {
-    if (days.length < 2) {
-      days.push(index);
-    } else {
-      days[0] = index;
-    }
-  }
-  settingsStore.patchCurrentSubjectSettings({ selectedDaysOfWeek: days });
+  return true;
 }
 
 function generateSchedule() {
@@ -1160,33 +1227,17 @@ function generateSchedule() {
     return;
   }
 
-  if (
-    selectedClassesPerWeek.value === 2 &&
-    selectedDaysOfWeek.value.length !== 2
-  ) {
+  if (!validateRtSlotUniqueness()) {
     showNotification(
-      "週2回を選択した場合、2つの曜日を選択してください。",
+      "リアルタイム授業の曜日・時限が重複しています。",
       "error",
     );
     return;
   }
 
-  if (selectedDaysOfWeek.value.length === 0) {
-    showNotification("少なくとも1つの曜日を選択してください。", "warning");
-    return;
-  }
-
-  // 週1回の場合は配列の最初の要素だけを含む配列を作成、週2回の場合はそのまま使用
-  const dayOfWeekParam: DayOfWeek[] =
-    selectedClassesPerWeek.value === 1
-      ? selectedDaysOfWeek.value.length > 0 &&
-        selectedDaysOfWeek.value[0] !== undefined
-        ? [selectedDaysOfWeek.value[0]]
-        : []
-      : selectedDaysOfWeek.value;
-
-  if (dayOfWeekParam.length === 0) {
-    showNotification("曜日が選択されていません。", "warning");
+  const slots = classSlots.value;
+  if (slots.length === 0) {
+    showNotification("スロットが設定されていません。", "warning");
     return;
   }
 
@@ -1200,8 +1251,7 @@ function generateSchedule() {
       currentYearData.value,
       selectedSemester.value,
       selectedCourseDays.value,
-      dayOfWeekParam,
-      deliveryModes.value,
+      slots,
     );
     schedule.value = result;
   } catch (error) {
@@ -1259,7 +1309,11 @@ function scheduleItemTitle(item: ScheduleItem): string {
     return `${item.dateStr} （休講）${item.holidayReason}`;
   }
   const deliveryModeText =
-    item.deliveryMode === "online" ? "オンライン" : "対面";
+    item.deliveryMode === "online"
+      ? "オンライン（同時双方向型）"
+      : item.deliveryMode === "on-demand"
+        ? "オンライン（オンデマンド）"
+        : "対面";
   return `${item.dateStr} 第${item.classNumber}回 ${deliveryModeText}`;
 }
 
@@ -1299,9 +1353,15 @@ function showDeliveryPopover(
 ) {
   const target = event.currentTarget as HTMLElement;
   const rect = target.getBoundingClientRect();
+  const text =
+    deliveryMode === "online"
+      ? "オンライン（同時双方向型）"
+      : deliveryMode === "on-demand"
+        ? "オンライン（オンデマンド）"
+        : "対面";
   deliveryPopover.value = {
     visible: true,
-    text: deliveryMode === "online" ? "オンライン" : "対面",
+    text,
     x: rect.left + rect.width / 2,
     y: rect.top - 5,
   };
@@ -1356,36 +1416,6 @@ function hideDeliveryPopover() {
   border: 2px solid #0066cc;
   display: inline-block;
   margin-left: 15px;
-}
-
-.header-year-block {
-  margin-left: 15px;
-  position: relative;
-  display: inline-block;
-}
-
-.header-year-block .academic-year-select {
-  font-size: 20px;
-  color: #0066cc;
-  font-weight: bold;
-  background-color: #e3f2fd;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 2px solid #0066cc;
-  cursor: pointer;
-  font-family: inherit;
-  appearance: auto;
-}
-
-.academic-year-update {
-  position: absolute;
-  top: 100%;
-  left: 15%;
-  margin: 2px 0 0 0;
-  padding: 0;
-  font-size: 12px;
-  color: #888;
-  white-space: nowrap;
 }
 
 .header-left {
@@ -1965,6 +1995,179 @@ function hideDeliveryPopover() {
 
 .delivery-face-to-face {
   color: #000000;
+}
+
+.delivery-on-demand {
+  color: #000000;
+}
+
+.slot-section .slot-section-inner {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 6px;
+  overflow: visible;
+}
+
+.slot-section,
+.slot-field,
+.slot-delivery-wrap {
+  overflow: visible;
+}
+
+.slot-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.slot-row:last-child {
+  margin-bottom: 0;
+}
+
+.slot-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.slot-label {
+  font-size: 10px;
+  color: #888;
+  line-height: 1;
+}
+
+.slot-delivery-wrap {
+  position: relative;
+  width: 38px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.slot-delivery-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 6px 0 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.slot-delivery-trigger::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 3px solid #666;
+}
+
+.slot-delivery-trigger:hover {
+  background: #f5f5f5;
+}
+
+.slot-delivery-menu {
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+  min-width: 240px;
+}
+
+.slot-delivery-menu-teleported {
+  position: fixed;
+}
+
+.slot-delivery-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.slot-delivery-option:hover {
+  background: #f0f0f0;
+}
+
+.slot-select {
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.slot-day-wrap {
+  position: relative;
+  width: 42px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.slot-day-display {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 18px 0 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+  pointer-events: none;
+}
+
+.slot-day-display::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 3px solid #666;
+}
+
+.slot-day-select {
+  position: absolute;
+  inset: 0;
+  min-width: 70px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.slot-period-select {
+  min-width: 55px;
+  height: 32px;
+}
+
+.slot-icon,
+.slot-option-icon {
+  flex-shrink: 0;
 }
 
 .delivery-popover-global {

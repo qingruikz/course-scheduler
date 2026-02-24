@@ -29,88 +29,61 @@
                 { holiday: day.isHoliday },
               ]"
               :title="
-                day.scheduleInfo
-                  ? day.scheduleInfo.isHoliday
-                    ? `（休講）${day.scheduleInfo.holidayReason}`
-                    : `第${day.scheduleInfo.classNumber}回 ${
-                        day.scheduleInfo.deliveryMode === 'online'
-                          ? 'オンライン'
-                          : '対面'
+                day.dayDisplayInfo
+                  ? day.dayDisplayInfo.isHoliday
+                    ? `（休講）${day.dayDisplayInfo.reason ?? ''}`
+                    : `第${day.dayDisplayInfo.classNumberDisplay}回 ${
+                        day.dayDisplayInfo.deliveryMode === 'online'
+                          ? 'オンライン（同時双方向型）'
+                          : day.dayDisplayInfo.deliveryMode === 'on-demand'
+                            ? 'オンライン（オンデマンド）'
+                            : '対面'
                       }`
                   : ''
               "
             >
               <div v-if="day.day > 0" class="day-content">
                 <span class="day-number">{{ day.day }}</span>
-                <div v-if="day.scheduleInfo" class="day-info">
+                <div v-if="day.dayDisplayInfo" class="day-info">
                   <div
-                    v-if="day.scheduleInfo.isHoliday"
+                    v-if="day.dayDisplayInfo.isHoliday"
                     class="day-holiday-text"
                   >
                     休講
                   </div>
                   <div v-else class="day-class-info">
-                    <svg
-                      v-if="day.scheduleInfo.deliveryMode === 'online'"
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
+                    <DeliveryIcon
+                      :mode="day.dayDisplayInfo.deliveryMode ?? 'face-to-face'"
+                      :size="10"
                       class="day-delivery-icon"
-                    >
-                      <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-                      <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-                      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-                      <line x1="12" y1="20" x2="12.01" y2="20"></line>
-                    </svg>
-                    <svg
-                      v-else
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="10"
-                      height="10"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      class="day-delivery-icon"
-                    >
-                      <path
-                        d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                      ></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
+                    />
                     <span class="day-class-number">{{
-                      day.scheduleInfo.classNumber
+                      day.dayDisplayInfo.classNumberDisplay
                     }}</span>
                   </div>
                 </div>
               </div>
               <span v-else class="day-number empty"></span>
-              <div v-if="day.scheduleInfo" class="popover">
+              <div v-if="day.dayDisplayInfo" class="popover">
                 <div class="popover-content">
-                  <div class="popover-date">{{ day.scheduleInfo.dateStr }}</div>
+                  <div class="popover-date">{{
+                    day.dayDisplayInfo.dateStr ?? ""
+                  }}</div>
                   <div
-                    v-if="day.scheduleInfo.isHoliday"
+                    v-if="day.dayDisplayInfo.isHoliday"
                     class="popover-holiday"
                   >
-                    （休講）{{ day.scheduleInfo.holidayReason }}
+                    （休講）{{ day.dayDisplayInfo.reason ?? "" }}
                   </div>
                   <div v-else class="popover-class">
-                    <div>第{{ day.scheduleInfo.classNumber }}回</div>
+                    <div>第{{ day.dayDisplayInfo.classNumberDisplay }}回</div>
                     <div class="popover-delivery">
                       {{
-                        day.scheduleInfo.deliveryMode === "online"
-                          ? "オンライン"
-                          : "対面"
+                        day.dayDisplayInfo.deliveryMode === "online"
+                          ? "オンライン（同時双方向型）"
+                          : day.dayDisplayInfo.deliveryMode === "on-demand"
+                            ? "オンライン（オンデマンド）"
+                            : "対面"
                       }}
                     </div>
                   </div>
@@ -127,6 +100,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { ScheduleItem } from "../types";
+import DeliveryIcon from "./DeliveryIcon.vue";
+import { formatClassNumbersDisplay } from "../utils/scheduleDisplay";
 import { formatDateShort } from "../utils/scheduleGenerator";
 
 const props = withDefaults(
@@ -139,6 +114,23 @@ const props = withDefaults(
 
 // 曜日のラベル（日曜日から土曜日）
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+function getDayDisplayInfo(items: ScheduleItem[] | undefined) {
+  if (!items?.length) return null;
+  const classes = items.filter((i) => !i.isHoliday && i.classNumber != null);
+  const holidayItem = items.find((i) => i.isHoliday);
+  if (holidayItem) {
+    return { isHoliday: true as const, reason: holidayItem.holidayReason };
+  }
+  if (classes.length === 0) return null;
+  const classNumbers = classes.map((i) => i.classNumber!);
+  return {
+    isHoliday: false as const,
+    classNumberDisplay: formatClassNumbersDisplay(classNumbers),
+    deliveryMode: classes[0]!.deliveryMode,
+    dateStr: classes[0]!.dateStr,
+  };
+}
 
 /**
  * スケジュールに含まれるすべての日付をSet形式で取得
@@ -176,14 +168,15 @@ const holidayReasons = computed(() => {
 });
 
 /**
- * スケジュール情報を日付をキーとしてMap形式で取得
- * カレンダー上の各日付に対応する授業情報（回数、実施方法など）を取得するために使用
+ * スケジュール情報を日付をキーとしてMap形式で取得（同日複数授業対応）
  */
 const scheduleInfo = computed(() => {
-  const map = new Map<string, ScheduleItem>();
+  const map = new Map<string, ScheduleItem[]>();
   props.schedule.forEach((item) => {
     const dateStr = formatDateShort(item.date);
-    map.set(dateStr, item);
+    const existing = map.get(dateStr) ?? [];
+    existing.push(item);
+    map.set(dateStr, existing);
   });
   return map;
 });
@@ -245,7 +238,8 @@ const displayedMonths = computed(() => {
       isHighlighted: boolean;
       isHoliday: boolean;
       holidayReason?: string;
-      scheduleInfo?: ScheduleItem;
+      scheduleInfo?: ScheduleItem[];
+      dayDisplayInfo?: ReturnType<typeof getDayDisplayInfo>;
     }>;
   }> = [];
 
@@ -273,7 +267,8 @@ const displayedMonths = computed(() => {
       isHighlighted: boolean;
       isHoliday: boolean;
       holidayReason?: string;
-      scheduleInfo?: ScheduleItem;
+      scheduleInfo?: ScheduleItem[];
+      dayDisplayInfo?: ReturnType<typeof getDayDisplayInfo>;
     }> = [];
 
     // カレンダーグリッドの最初の週の空白セルを追加
@@ -292,8 +287,8 @@ const displayedMonths = computed(() => {
       const dateStr = formatDateShort(date);
       // この日付が休日かどうかを判定
       const isHoliday = holidayDates.value.has(dateStr);
-      // この日付に対応するスケジュール情報を取得
-      const info = scheduleInfo.value.get(dateStr);
+      // この日付に対応するスケジュール情報を取得（同日複数授業対応）
+      const items = scheduleInfo.value.get(dateStr);
       days.push({
         day, // 日付番号（1-31）
         // この日付がスケジュールに含まれるかどうか（ハイライト表示用）
@@ -304,8 +299,9 @@ const displayedMonths = computed(() => {
         holidayReason: isHoliday
           ? holidayReasons.value.get(dateStr)
           : undefined,
-        // この日付の授業情報（回数、実施方法など）
-        scheduleInfo: info,
+        // この日付の授業情報（同日複数可）
+        scheduleInfo: items,
+        dayDisplayInfo: getDayDisplayInfo(items),
       });
     }
 

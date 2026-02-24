@@ -35,17 +35,11 @@ export function downloadIcsFromPayload(
     const yearData = calendarData.years[String(p.year)] as YearData | undefined;
     if (!yearData) return false;
 
-    const dayOfWeekParam =
-      p.classesPerWeek === 1 && p.selectedDaysOfWeek.length > 0
-        ? [p.selectedDaysOfWeek[0]!]
-        : p.selectedDaysOfWeek;
-
     const schedule = generateSchedule(
       yearData,
       p.semester,
       p.courseDays,
-      dayOfWeekParam,
-      p.deliveryModes
+      p.classSlots
     );
 
     const blob = buildScheduleIcsBlob(

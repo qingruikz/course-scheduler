@@ -69,7 +69,15 @@ export type SemesterOption =
 export type CourseDays = 7 | 14;
 export type ClassesPerWeek = 1 | 2;
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=日曜日, 1=月曜日, ...
-export type DeliveryMode = "online" | "face-to-face";
+export type DeliveryMode = "online" | "face-to-face" | "on-demand";
+
+/** 1週間あたりの1スロット分の授業設定（実施方法・曜日・時限） */
+export interface ClassSlot {
+  deliveryType: DeliveryMode;
+  dayOfWeek: DayOfWeek;
+  /** RT（対面・オンライン）のみ。OD では不要 */
+  period?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+}
 
 /** ICS 出力用: 1つの曜日スロット（時限 or カスタム時間 + 教室） */
 export interface IcsSlot {
@@ -103,14 +111,18 @@ export interface SubjectSettings {
   semester: SemesterOption;
   courseDays: CourseDays;
   classesPerWeek: ClassesPerWeek;
-  selectedDaysOfWeek: DayOfWeek[];
-  deliveryModes: Record<DayOfWeek, DeliveryMode>;
+  /** 1週間あたりのスロット設定（classesPerWeek と一致する長さ） */
+  classSlots: ClassSlot[];
+  /** @deprecated v1 互換用。インポート時に classSlots へ変換 */
+  selectedDaysOfWeek?: DayOfWeek[];
+  /** @deprecated v1 互換用。インポート時に classSlots へ変換 */
+  deliveryModes?: Record<DayOfWeek, DeliveryMode>;
   /** ICS 出力の設定（科目名・時限・教室・リマインド等） */
   icsExportOptions?: IcsExportOptions;
 }
 
 /** 設定のエクスポート/インポート用（version で将来の互換性を確保） */
-export const SETTINGS_EXPORT_VERSION = 1;
+export const SETTINGS_EXPORT_VERSION = 2;
 
 export interface SettingsExport {
   version: number;
@@ -134,14 +146,41 @@ export function defaultDeliveryModes(): Record<DayOfWeek, DeliveryMode> {
   };
 }
 
+/** デフォルトの1スロット（対面・月曜・1限） */
+export function defaultClassSlot(): ClassSlot {
+  return {
+    deliveryType: "face-to-face",
+    dayOfWeek: 1,
+    period: 1,
+  };
+}
+
+/** v1 形式（selectedDaysOfWeek + deliveryModes）を classSlots に変換 */
+export function migrateSubjectSettingsV1ToV2(s: {
+  selectedDaysOfWeek?: DayOfWeek[] | number[];
+  deliveryModes?: Record<DayOfWeek, DeliveryMode> | Record<number, string>;
+  classesPerWeek?: ClassesPerWeek | number;
+}): ClassSlot[] {
+  const days = (s.selectedDaysOfWeek ?? [1]) as DayOfWeek[];
+  const modes = (s.deliveryModes ?? defaultDeliveryModes()) as Record<
+    DayOfWeek,
+    DeliveryMode
+  >;
+  const perWeek = (s.classesPerWeek ?? 1) as ClassesPerWeek;
+  return days.slice(0, perWeek).map((dow) => ({
+    deliveryType: (modes[dow] ?? "face-to-face") as DeliveryMode,
+    dayOfWeek: dow,
+    period: 1 as 1 | 2 | 3 | 4 | 5 | 6 | 7,
+  }));
+}
+
 /** デフォルトの科目設定（空＝未選択時の初期値） */
 export function defaultSubjectSettings(): SubjectSettings {
   return {
     semester: "1学期",
     courseDays: 7,
     classesPerWeek: 1,
-    selectedDaysOfWeek: [1],
-    deliveryModes: defaultDeliveryModes(),
+    classSlots: [defaultClassSlot()],
   };
 }
 

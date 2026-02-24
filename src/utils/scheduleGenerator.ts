@@ -3,9 +3,9 @@ import type {
   ScheduleItem,
   SemesterOption,
   CourseDays,
-  ClassesPerWeek,
   DayOfWeek,
   DeliveryMode,
+  ClassSlot,
 } from "../types";
 
 /** 授業回数不足などでスケジュール生成を中止するときに使用 */
@@ -123,25 +123,22 @@ export function isHoliday(
 /**
  * 授業スケジュールを生成
  *
- * 指定された学期、授業回数、曜日、実施方法に基づいて、授業日程を自動生成します。
+ * 指定された学期、授業回数、classSlots に基づいて、授業日程を自動生成します。
  * 休日は自動的に検出され、スケジュールに含まれますが、授業回数にはカウントされません。
- * 週の授業回数は dayOfWeek 配列の要素数で判断されます（1要素の場合は週1回、2要素の場合は週2回）。
+ * RT（対面・オンライン）と OD（オンデマンド）を区別し、各スロットの曜日に沿って日付を生成します。
  *
  * @param yearData - 年度データ（学期期間、休日情報を含む）
  * @param semester - 選択された学期（例: "1学期"、"前期"など）
  * @param courseDays - 授業回数（7回または14回）
- * @param dayOfWeek - 授業の曜日の配列（例: [1] は週1回の月曜日、[1, 3] は週2回の月曜日と水曜日）
- * @param deliveryModes - 各曜日ごとの実施方法（オンライン/対面）のマッピング
+ * @param classSlots - 1週間あたりのスロット設定（実施方法・曜日・時限）
  * @returns 生成された授業スケジュールの配列
  */
 export function generateSchedule(
   yearData: YearData,
   semester: SemesterOption,
   courseDays: CourseDays,
-  dayOfWeek: DayOfWeek[],
-  deliveryModes?: Record<DayOfWeek, DeliveryMode>,
+  classSlots: ClassSlot[],
 ): ScheduleItem[] {
-  // 選択された学期のキーを直接使用
   const semesterKey: string = semester;
   const semesterPeriod = yearData.semesters[semesterKey];
 
@@ -154,60 +151,49 @@ export function generateSchedule(
   const endDate = parseDate(semesterPeriod[1]);
 
   const schedule: ScheduleItem[] = [];
-  let classNumber = 0; // 実際の授業回数カウンター（休日はカウントしない）
+  let classNumber = 0;
 
-  // dayOfWeek は既に配列形式
-  const daysOfWeek: DayOfWeek[] = dayOfWeek;
+  // 日付キュー: { date, deliveryMode, slotIndex } で slotIndex のスロットの次回日を管理
+  const dateQueues: Array<{
+    date: Date;
+    deliveryMode: DeliveryMode;
+    slotIndex: number;
+  }> = [];
 
-  // dateQueues: 待処理の日付を管理するキュー（優先度付きキュー）
-  // 各要素は { date: 日付, dayOfWeek: 曜日 } の形式
-  // 用途:
-  //   - 複数の曜日（例: 月曜日と水曜日）を同時に処理する際、日付順に処理するため
-  //   - 各曜日の次の授業日（7日後）を自動的にキューに追加し、継続的に処理できるようにする
-  // 例: 週2回（月曜日と水曜日）の場合
-  //   - 初期: [{ date: 2025-04-21(月), dayOfWeek: 1 }, { date: 2025-04-23(水), dayOfWeek: 3 }]
-  //   - 処理後: 月曜日を処理 → 次の月曜日(2025-04-28)をキューに追加
-  const dateQueues: Array<{ date: Date; dayOfWeek: DayOfWeek }> = [];
-
-  // 各曜日について、学期期間内の最初の該当曜日を見つけてキューに追加
-  for (const dow of daysOfWeek) {
+  for (let i = 0; i < classSlots.length; i++) {
+    const slot = classSlots[i]!;
     let currentDate = new Date(startDate);
-    // 学期開始日から最初の該当曜日を見つける
-    while (currentDate <= endDate && getDayOfWeek(currentDate) !== dow) {
+    while (currentDate <= endDate && getDayOfWeek(currentDate) !== slot.dayOfWeek) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
-    // 学期期間内に該当曜日が見つかった場合、キューに追加
     if (currentDate <= endDate) {
-      dateQueues.push({ date: currentDate, dayOfWeek: dow });
+      dateQueues.push({
+        date: currentDate,
+        deliveryMode: slot.deliveryType,
+        slotIndex: i,
+      });
     }
   }
 
-  // 日付順にソート（最も早い日付から処理するため）
   dateQueues.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  // 要求された授業回数に達するまでスケジュールを生成
+  const isSameDate = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
   while (classNumber < courseDays) {
-    // dateQueuesが空 = すべての可能な授業日が処理済みで、次の週の同じ曜日が学期終了日を超えている
-    // この場合、要求された授業回数に達していなくても、これ以上処理できる日付がないため終了
-    if (dateQueues.length === 0) {
-      break;
-    }
+    if (dateQueues.length === 0) break;
 
-    // 最も早い日付をキューから取得
-    const { date: currentDate, dayOfWeek: dow } = dateQueues.shift()!;
+    const { date: currentDate, deliveryMode, slotIndex } = dateQueues.shift()!;
 
-    // 防御的チェック: 学期終了日を超えている場合はスキップ
-    if (currentDate > endDate) {
-      continue;
-    }
+    if (currentDate > endDate) continue;
 
-    // 休日かどうかを判定
     const holidayInfo = isHoliday(currentDate, yearData);
     const currentDayOfWeek = getDayOfWeek(currentDate);
     const dayOfWeekName = DAY_NAMES_FULL[currentDayOfWeek] ?? "不明";
 
     if (holidayInfo.isHoliday) {
-      // 休日の場合: スケジュールに追加するが、授業回数にはカウントしない
       schedule.push({
         date: new Date(currentDate),
         dateStr: formatDate(currentDate),
@@ -215,10 +201,33 @@ export function generateSchedule(
         isHoliday: true,
         holidayReason: holidayInfo.reason,
       });
+      // 同日に複数スロットがある場合、同じ休日を重複表示しないため、
+      // 同日の他のスロットをすべて次週に進める
+      // 注意: 今回 pop した slot も次週に進める必要がある（キューに戻さないと slot が失われる）
+      const sameDateEntries: typeof dateQueues = [];
+      const restEntries: typeof dateQueues = [];
+      for (const e of dateQueues) {
+        if (isSameDate(e.date, currentDate)) sameDateEntries.push(e);
+        else restEntries.push(e);
+      }
+      sameDateEntries.push({ date: currentDate, deliveryMode, slotIndex });
+      dateQueues.length = 0;
+      dateQueues.push(...restEntries);
+      for (const e of sameDateEntries) {
+        const nextDate = new Date(e.date);
+        nextDate.setDate(nextDate.getDate() + 7);
+        if (nextDate <= endDate) {
+          const slot = classSlots[e.slotIndex]!;
+          dateQueues.push({
+            date: nextDate,
+            deliveryMode: slot.deliveryType,
+            slotIndex: e.slotIndex,
+          });
+        }
+      }
+      dateQueues.sort((a, b) => a.date.getTime() - b.date.getTime());
     } else {
-      // 通常の授業日: 授業回数をカウントし、スケジュールに追加
       classNumber++;
-      const deliveryMode = deliveryModes?.[dow] || "face-to-face";
       schedule.push({
         date: new Date(currentDate),
         dateStr: formatDate(currentDate),
@@ -227,22 +236,23 @@ export function generateSchedule(
         isHoliday: false,
         deliveryMode,
       });
-    }
 
-    // 次の同じ曜日（7日後）を計算してキューに追加
-    const nextDate = new Date(currentDate);
-    nextDate.setDate(nextDate.getDate() + 7);
-    if (nextDate <= endDate) {
-      dateQueues.push({ date: nextDate, dayOfWeek: dow });
-      // 日付順にソート（次の処理で最も早い日付を取得するため）
-      dateQueues.sort((a, b) => a.date.getTime() - b.date.getTime());
+      const nextDate = new Date(currentDate);
+      nextDate.setDate(nextDate.getDate() + 7);
+      if (nextDate <= endDate) {
+        const slot = classSlots[slotIndex]!;
+        dateQueues.push({
+          date: nextDate,
+          deliveryMode: slot.deliveryType,
+          slotIndex,
+        });
+        dateQueues.sort((a, b) => a.date.getTime() - b.date.getTime());
+      }
     }
   }
 
-  // 日付順にソート
   schedule.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-  // 要求された授業回数に達していない場合は中止し、呼び出し元で Message 表示
   if (classNumber < courseDays) {
     throw new ScheduleGenerationError(
       "授業日が不足しています。学期・授業回数・週の回数の設定をご確認ください。",

@@ -38,65 +38,34 @@
                       { holiday: day.isHoliday },
                     ]"
                     :title="
-                      day.scheduleInfo
-                        ? day.scheduleInfo.isHoliday
-                          ? `（休講）${day.scheduleInfo.holidayReason}`
-                          : `第${day.scheduleInfo.classNumber}回`
+                      day.dayDisplayInfo
+                        ? day.dayDisplayInfo.isHoliday
+                          ? `（休講）${day.dayDisplayInfo.reason ?? ''}`
+                          : `第${day.dayDisplayInfo.classNumberDisplay}回`
                         : ''
                     "
                   >
                     <template v-if="day.day > 0">
                       <span class="official-day-num">{{ day.day }}</span>
                       <div
-                        v-if="day.scheduleInfo"
+                        v-if="day.dayDisplayInfo"
                         class="official-day-marker"
                         :class="{
-                          'marker-holiday': day.scheduleInfo.isHoliday,
-                          'marker-class': !day.scheduleInfo.isHoliday,
+                          'marker-holiday': day.dayDisplayInfo.isHoliday,
+                          'marker-class': !day.dayDisplayInfo.isHoliday,
                         }"
                       >
-                        <template v-if="day.scheduleInfo.isHoliday"> </template>
+                        <template v-if="day.dayDisplayInfo.isHoliday"> </template>
                         <template v-else>
-                          <svg
-                            v-if="day.scheduleInfo.deliveryMode === 'online'"
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
+                          <DeliveryIcon
+                            :mode="
+                              day.dayDisplayInfo.deliveryMode ?? 'face-to-face'
+                            "
+                            :size="14"
                             class="marker-icon"
-                          >
-                            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
-                            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
-                            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
-                            <line x1="12" y1="20" x2="12.01" y2="20"></line>
-                          </svg>
-                          <svg
-                            v-else
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            class="marker-icon"
-                          >
-                            <path
-                              d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                            ></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                          </svg>
+                          />
                           <span class="marker-text marker-class-number">{{
-                            day.scheduleInfo.classNumber
+                            day.dayDisplayInfo.classNumberDisplay
                           }}</span>
                         </template>
                       </div>
@@ -118,7 +87,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { ScheduleItem, CalendarLayout, MonthLayout } from "../types";
+import DeliveryIcon from "./DeliveryIcon.vue";
 import { formatDateShort } from "../utils/scheduleGenerator";
+import { formatClassNumbersDisplay } from "../utils/scheduleDisplay";
 
 const props = withDefaults(
   defineProps<{
@@ -130,6 +101,23 @@ const props = withDefaults(
 );
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+function getDayDisplayInfo(items: ScheduleItem[] | undefined) {
+  if (!items?.length) return null;
+  const classes = items.filter((i) => !i.isHoliday && i.classNumber != null);
+  const holidayItem = items.find((i) => i.isHoliday);
+  if (holidayItem) {
+    return { isHoliday: true as const, reason: holidayItem.holidayReason };
+  }
+  if (classes.length === 0) return null;
+  const classNumbers = classes.map((i) => i.classNumber!);
+  return {
+    isHoliday: false as const,
+    classNumberDisplay: formatClassNumbersDisplay(classNumbers),
+    deliveryMode: classes[0]!.deliveryMode,
+    dateStr: classes[0]!.dateStr,
+  };
+}
 
 const highlightedDates = computed(() => {
   return new Set(props.schedule.map((item) => formatDateShort(item.date)));
@@ -151,9 +139,12 @@ const holidayReasons = computed(() => {
   return map;
 });
 const scheduleInfo = computed(() => {
-  const map = new Map<string, ScheduleItem>();
+  const map = new Map<string, ScheduleItem[]>();
   props.schedule.forEach((item) => {
-    map.set(formatDateShort(item.date), item);
+    const dateStr = formatDateShort(item.date);
+    const existing = map.get(dateStr) ?? [];
+    existing.push(item);
+    map.set(dateStr, existing);
   });
   return map;
 });
@@ -181,7 +172,8 @@ const displayedMonths = computed(() => {
       isHighlighted: boolean;
       isHoliday: boolean;
       holidayReason?: string;
-      scheduleInfo?: ScheduleItem;
+      scheduleInfo?: ScheduleItem[];
+      dayDisplayInfo?: ReturnType<typeof getDayDisplayInfo>;
     }>;
   }> = [];
   let currentYear = minDate.getFullYear();
@@ -201,7 +193,8 @@ const displayedMonths = computed(() => {
       isHighlighted: boolean;
       isHoliday: boolean;
       holidayReason?: string;
-      scheduleInfo?: ScheduleItem;
+      scheduleInfo?: ScheduleItem[];
+      dayDisplayInfo?: ReturnType<typeof getDayDisplayInfo>;
     }> = [];
 
     for (let i = 0; i < firstDayOfWeek; i++) {
@@ -211,7 +204,7 @@ const displayedMonths = computed(() => {
       const date = new Date(year, month, day);
       const dateStr = formatDateShort(date);
       const isHoliday = holidayDates.value.has(dateStr);
-      const info = scheduleInfo.value.get(dateStr);
+      const items = scheduleInfo.value.get(dateStr);
       days.push({
         day,
         isHighlighted: highlightedDates.value.has(dateStr),
@@ -219,7 +212,8 @@ const displayedMonths = computed(() => {
         holidayReason: isHoliday
           ? holidayReasons.value.get(dateStr)
           : undefined,
-        scheduleInfo: info,
+        scheduleInfo: items,
+        dayDisplayInfo: getDayDisplayInfo(items),
       });
     }
     months.push({
@@ -260,7 +254,9 @@ function visibleDays(month: {
     day: number;
     isHighlighted: boolean;
     isHoliday: boolean;
-    scheduleInfo?: ScheduleItem;
+    holidayReason?: string;
+    scheduleInfo?: ScheduleItem[];
+    dayDisplayInfo?: ReturnType<typeof getDayDisplayInfo>;
   }>;
 }) {
   const ml = getMonthLayout(month.month);
