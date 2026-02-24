@@ -408,6 +408,8 @@ function gridInnerStyle(month: number) {
   justify-content: flex-start;
   font-size: 11px;
   position: relative;
+  min-width: 0;
+  overflow: hidden;
 }
 /* 背景画像に日付ありのため数字は非表示。格子は透明で授業ハイライトを重ねやすくする */
 .official-day-num {
@@ -425,6 +427,8 @@ function gridInnerStyle(month: number) {
   gap: 2px;
   font-size: 8px;
   line-height: 1;
+  overflow: hidden;
+  min-width: 0;
 }
 .official-day-marker.marker-class {
   background: rgba(0, 102, 204, 0.4);
@@ -441,6 +445,9 @@ function gridInnerStyle(month: number) {
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 .official-day-marker.marker-holiday {
   background: rgba(204, 0, 0, 0.35);

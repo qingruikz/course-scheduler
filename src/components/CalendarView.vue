@@ -68,9 +68,9 @@
               <span v-else class="day-number empty"></span>
               <div v-if="showMarkers && day.dayDisplayInfo" class="popover">
                 <div class="popover-content">
-                  <div class="popover-date">{{
-                    day.dayDisplayInfo.dateStr ?? ""
-                  }}</div>
+                  <div class="popover-date">
+                    {{ day.dayDisplayInfo.dateStr ?? "" }}
+                  </div>
                   <div
                     v-if="day.dayDisplayInfo.isHoliday"
                     class="popover-holiday"
@@ -417,6 +417,8 @@ const reorderedMonths = computed(() => {
   min-height: 50px;
   margin: 0 auto;
   box-sizing: border-box;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .day-content {
@@ -426,6 +428,8 @@ const reorderedMonths = computed(() => {
   justify-content: flex-start;
   width: 100%;
   gap: 2px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .day-number {
@@ -474,6 +478,8 @@ const reorderedMonths = computed(() => {
   font-size: 8px;
   line-height: 1;
   gap: 1px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .day-class-info {
@@ -482,6 +488,8 @@ const reorderedMonths = computed(() => {
   justify-content: center;
   gap: 2px;
   color: #0066cc;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .day-class-info .day-delivery-icon,
@@ -496,6 +504,9 @@ const reorderedMonths = computed(() => {
 .day-class-number {
   font-size: 8px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* 休講：汉字 休講，红色（与现有一致） */
@@ -503,6 +514,9 @@ const reorderedMonths = computed(() => {
   font-size: 8px;
   color: #cc0000;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .popover {
