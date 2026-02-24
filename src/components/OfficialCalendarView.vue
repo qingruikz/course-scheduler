@@ -34,8 +34,13 @@
                     :key="index"
                     :class="[
                       'official-day-cell',
-                      { highlighted: day.isHighlighted && !day.isHoliday },
-                      { holiday: day.isHoliday },
+                      {
+                        highlighted:
+                          showMarkers &&
+                          day.isHighlighted &&
+                          !day.isHoliday,
+                      },
+                      { holiday: showMarkers && day.isHoliday },
                     ]"
                     :title="
                       day.dayDisplayInfo
@@ -48,7 +53,7 @@
                     <template v-if="day.day > 0">
                       <span class="official-day-num">{{ day.day }}</span>
                       <div
-                        v-if="day.dayDisplayInfo"
+                        v-if="showMarkers && day.dayDisplayInfo"
                         class="official-day-marker"
                         :class="{
                           'marker-holiday': day.dayDisplayInfo.isHoliday,
@@ -96,8 +101,9 @@ const props = withDefaults(
     schedule: ScheduleItem[];
     layout: CalendarLayout | null;
     twoColumns?: boolean;
+    showMarkers?: boolean;
   }>(),
-  { twoColumns: true },
+  { twoColumns: true, showMarkers: true },
 );
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];

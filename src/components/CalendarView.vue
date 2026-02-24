@@ -25,8 +25,10 @@
               :key="index"
               :class="[
                 'calendar-day',
-                { highlighted: day.isHighlighted },
-                { holiday: day.isHoliday },
+                {
+                  highlighted: showMarkers && day.isHighlighted,
+                },
+                { holiday: showMarkers && day.isHoliday },
               ]"
               :title="
                 day.dayDisplayInfo
@@ -44,7 +46,7 @@
             >
               <div v-if="day.day > 0" class="day-content">
                 <span class="day-number">{{ day.day }}</span>
-                <div v-if="day.dayDisplayInfo" class="day-info">
+                <div v-if="showMarkers && day.dayDisplayInfo" class="day-info">
                   <div
                     v-if="day.dayDisplayInfo.isHoliday"
                     class="day-holiday-text"
@@ -64,7 +66,7 @@
                 </div>
               </div>
               <span v-else class="day-number empty"></span>
-              <div v-if="day.dayDisplayInfo" class="popover">
+              <div v-if="showMarkers && day.dayDisplayInfo" class="popover">
                 <div class="popover-content">
                   <div class="popover-date">{{
                     day.dayDisplayInfo.dateStr ?? ""
@@ -108,8 +110,9 @@ const props = withDefaults(
   defineProps<{
     schedule: ScheduleItem[];
     twoColumns?: boolean;
+    showMarkers?: boolean;
   }>(),
-  { twoColumns: true },
+  { twoColumns: true, showMarkers: true },
 );
 
 // 曜日のラベル（日曜日から土曜日）

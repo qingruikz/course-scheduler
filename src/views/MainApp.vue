@@ -548,6 +548,17 @@
                   <span class="toggle-switch-slider"></span>
                 </label>
               </div>
+              <div class="calendar-switch-item">
+                <span class="switch-label">授業日・休日マーク</span>
+                <label class="toggle-switch">
+                  <input
+                    v-model="showCalendarMarkers"
+                    type="checkbox"
+                    class="toggle-switch-input"
+                  />
+                  <span class="toggle-switch-slider"></span>
+                </label>
+              </div>
             </div>
             <CalendarView
               v-if="schedule.length > 0 && !useOfficialCalendarBackground"
@@ -555,6 +566,7 @@
               :yearData="currentYearData"
               :year="storeSelectedYear ?? 0"
               :two-columns="calendarTwoColumns"
+              :show-markers="showCalendarMarkers"
             />
             <OfficialCalendarView
               v-else-if="
@@ -567,6 +579,7 @@
               :semester-start="semesterPeriod?.start"
               :semester-end="semesterPeriod?.end"
               :two-columns="calendarTwoColumns"
+              :show-markers="showCalendarMarkers"
             />
             <div
               v-else-if="
@@ -734,6 +747,10 @@ const CALENDAR_TWO_COLUMNS_KEY = "course-scheduler:calendarTwoColumns";
 const calendarTwoColumns = ref(
   localStorage.getItem(CALENDAR_TWO_COLUMNS_KEY) !== "false",
 );
+const CALENDAR_MARKERS_KEY = "course-scheduler:showCalendarMarkers";
+const showCalendarMarkers = ref(
+  localStorage.getItem(CALENDAR_MARKERS_KEY) !== "false",
+);
 const calendarLayout = ref<CalendarLayout | null>(null);
 const calendarTestImageUrl =
   (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/") + "calendar_2026.png";
@@ -745,6 +762,11 @@ watch(
 watch(
   calendarTwoColumns,
   (v) => localStorage.setItem(CALENDAR_TWO_COLUMNS_KEY, String(v)),
+  { immediate: true },
+);
+watch(
+  showCalendarMarkers,
+  (v) => localStorage.setItem(CALENDAR_MARKERS_KEY, String(v)),
   { immediate: true },
 );
 
