@@ -153,6 +153,33 @@ export function generateSchedule(
   const schedule: ScheduleItem[] = [];
   let classNumber = 0;
 
+  // 教学周起点：Slot ① の曜日が学期内で最初に現れる日。第1回はこの日。
+  const firstSlot = classSlots[0];
+  if (!firstSlot) return [];
+
+  let firstSlot1Date = new Date(startDate);
+  while (
+    firstSlot1Date <= endDate &&
+    getDayOfWeek(firstSlot1Date) !== firstSlot.dayOfWeek
+  ) {
+    firstSlot1Date.setDate(firstSlot1Date.getDate() + 1);
+  }
+  if (firstSlot1Date > endDate) return [];
+
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const weekIndex = (d: Date) =>
+    Math.floor(
+      (d.getTime() - firstSlot1Date.getTime()) / (7 * MS_PER_DAY),
+    );
+
+  const sortBySlotOrder = () =>
+    dateQueues.sort((a, b) => {
+      const wa = weekIndex(a.date);
+      const wb = weekIndex(b.date);
+      if (wa !== wb) return wa - wb;
+      return a.slotIndex - b.slotIndex;
+    });
+
   // 日付キュー: { date, deliveryMode, slotIndex } で slotIndex のスロットの次回日を管理
   const dateQueues: Array<{
     date: Date;
@@ -162,8 +189,11 @@ export function generateSchedule(
 
   for (let i = 0; i < classSlots.length; i++) {
     const slot = classSlots[i]!;
-    let currentDate = new Date(startDate);
-    while (currentDate <= endDate && getDayOfWeek(currentDate) !== slot.dayOfWeek) {
+    let currentDate = new Date(firstSlot1Date);
+    while (
+      currentDate <= endDate &&
+      getDayOfWeek(currentDate) !== slot.dayOfWeek
+    ) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
     if (currentDate <= endDate) {
@@ -175,7 +205,7 @@ export function generateSchedule(
     }
   }
 
-  dateQueues.sort((a, b) => a.date.getTime() - b.date.getTime());
+  sortBySlotOrder();
 
   const isSameDate = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() &&
@@ -225,7 +255,7 @@ export function generateSchedule(
           });
         }
       }
-      dateQueues.sort((a, b) => a.date.getTime() - b.date.getTime());
+      sortBySlotOrder();
     } else {
       classNumber++;
       schedule.push({
@@ -246,7 +276,7 @@ export function generateSchedule(
           deliveryMode: slot.deliveryType,
           slotIndex,
         });
-        dateQueues.sort((a, b) => a.date.getTime() - b.date.getTime());
+        sortBySlotOrder();
       }
     }
   }
