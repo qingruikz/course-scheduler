@@ -52,9 +52,20 @@
       <div class="header-content">
         <div class="header-left">
           <h1>大学授業スケジュールジェネレーター</h1>
-          <span class="academic-year" v-if="storeSelectedYear">
-            {{ formatAcademicYear(storeSelectedYear ?? 0) }}
-          </span>
+          <div class="header-year-block" v-if="availableYears.length">
+            <select
+              v-model="storeSelectedYear"
+              class="academic-year academic-year-select"
+              @change="onYearChange"
+            >
+              <option v-for="year in availableYears" :key="year" :value="year">
+                {{ formatAcademicYear(year) }}
+              </option>
+            </select>
+            <p class="academic-year-update" v-if="createdAt">
+              (学年暦更新日: {{ createdAt }})
+            </p>
+          </div>
         </div>
       </div>
     </header>
@@ -120,23 +131,6 @@
         </div>
 
         <div class="conditions-body">
-          <div class="form-group">
-            <label for="year">年度</label>
-            <select
-              id="year"
-              v-model="storeSelectedYear"
-              class="form-control"
-              @change="onYearChange"
-            >
-              <option v-for="year in availableYears" :key="year" :value="year">
-                {{ formatAcademicYear(year) }}
-              </option>
-            </select>
-            <p class="calendar-info" v-if="createdAt">
-              学年暦更新日: {{ createdAt }}
-            </p>
-          </div>
-
           <div class="form-group">
             <label for="subject" class="label-with-hint">
               科目
@@ -1334,7 +1328,7 @@ function hideDeliveryPopover() {
   position: relative;
   width: 100%;
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
   flex-shrink: 0;
 }
 
@@ -1362,6 +1356,36 @@ function hideDeliveryPopover() {
   border: 2px solid #0066cc;
   display: inline-block;
   margin-left: 15px;
+}
+
+.header-year-block {
+  margin-left: 15px;
+  position: relative;
+  display: inline-block;
+}
+
+.header-year-block .academic-year-select {
+  font-size: 20px;
+  color: #0066cc;
+  font-weight: bold;
+  background-color: #e3f2fd;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 2px solid #0066cc;
+  cursor: pointer;
+  font-family: inherit;
+  appearance: auto;
+}
+
+.academic-year-update {
+  position: absolute;
+  top: 100%;
+  left: 15%;
+  margin: 2px 0 0 0;
+  padding: 0;
+  font-size: 12px;
+  color: #888;
+  white-space: nowrap;
 }
 
 .header-left {
