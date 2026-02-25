@@ -355,20 +355,25 @@
             </div>
             <div v-if="isRealtime(slot)" class="slot-field">
               <span class="slot-label">時限</span>
-              <select
-                :value="slot.period ?? 1"
-                class="slot-select slot-period-select"
-                title="時限"
-                @change="updateSlotPeriod(slotIdx, Number(($event.target as HTMLSelectElement).value) as 1|2|3|4|5|6|7)"
-              >
-                <option
-                  v-for="p in PERIOD_TIMES"
-                  :key="p.period"
-                  :value="p.period"
+              <div class="slot-period-wrap">
+                <span class="slot-period-display">{{
+                  (slot.period ?? 1) + "限"
+                }}</span>
+                <select
+                  :value="slot.period ?? 1"
+                  class="slot-select slot-period-select"
+                  title="時限"
+                  @change="updateSlotPeriod(slotIdx, Number(($event.target as HTMLSelectElement).value) as 1|2|3|4|5|6|7)"
                 >
-                  {{ p.period }}限
-                </option>
-              </select>
+                  <option
+                    v-for="p in PERIOD_TIMES"
+                    :key="p.period"
+                    :value="p.period"
+                  >
+                    {{ p.period }}限
+                  </option>
+                </select>
+              </div>
             </div>
           </div>
             </div>
@@ -2086,7 +2091,7 @@ function hideDeliveryPopover() {
 .slot-delivery-trigger::after {
   content: "";
   position: absolute;
-  right: 4px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   width: 0;
@@ -2135,7 +2140,7 @@ function hideDeliveryPopover() {
   padding: 6px 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   background: white;
   height: 32px;
   box-sizing: border-box;
@@ -2156,7 +2161,7 @@ function hideDeliveryPopover() {
   padding: 0 18px 0 6px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13px;
   background: white;
   pointer-events: none;
 }
@@ -2182,9 +2187,45 @@ function hideDeliveryPopover() {
   cursor: pointer;
 }
 
-.slot-period-select {
-  min-width: 55px;
+.slot-period-wrap {
+  position: relative;
+  width: 48px;
   height: 32px;
+  flex-shrink: 0;
+}
+
+.slot-period-display {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 18px 0 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  background: white;
+  pointer-events: none;
+}
+
+.slot-period-display::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  border-top: 3px solid #666;
+}
+
+.slot-period-select {
+  position: absolute;
+  inset: 0;
+  min-width: 55px;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .slot-icon,
