@@ -153,9 +153,11 @@ export function generateSchedule(
   const schedule: ScheduleItem[] = [];
   let classNumber = 0;
 
-  // 教学周起点：Slot ① の曜日が学期内で最初に現れる日。第1回はこの日。
+  // Slot ① の曜日が学期内で最初に現れる日。OD があるときのみ slot 順を考慮する。
   const firstSlot = classSlots[0];
   if (!firstSlot) return [];
+
+  const hasOD = classSlots.some((s) => s.deliveryType === "on-demand");
 
   let firstSlot1Date = new Date(startDate);
   while (
@@ -168,15 +170,20 @@ export function generateSchedule(
 
   const MS_PER_DAY = 24 * 60 * 60 * 1000;
   const weekIndex = (d: Date) =>
-    Math.floor(
-      (d.getTime() - firstSlot1Date.getTime()) / (7 * MS_PER_DAY),
-    );
+    Math.floor((d.getTime() - firstSlot1Date.getTime()) / (7 * MS_PER_DAY));
 
+  // 全 RT のときは日付順で slot を並べる。OD があるときは slot1 起点の週順＋slot 順。
   const sortBySlotOrder = () =>
     dateQueues.sort((a, b) => {
-      const wa = weekIndex(a.date);
-      const wb = weekIndex(b.date);
-      if (wa !== wb) return wa - wb;
+      if (hasOD) {
+        const wa = weekIndex(a.date);
+        const wb = weekIndex(b.date);
+        if (wa !== wb) return wa - wb;
+        return a.slotIndex - b.slotIndex;
+      }
+      const ta = a.date.getTime();
+      const tb = b.date.getTime();
+      if (ta !== tb) return ta - tb;
       return a.slotIndex - b.slotIndex;
     });
 
@@ -187,9 +194,11 @@ export function generateSchedule(
     slotIndex: number;
   }> = [];
 
+  // 全 RT のときは各 slot を学期内のその曜日の「最初の日」から開始。OD があるときは slot1 の初回以降から。
+  const slotStartBase = hasOD ? firstSlot1Date : startDate;
   for (let i = 0; i < classSlots.length; i++) {
     const slot = classSlots[i]!;
-    let currentDate = new Date(firstSlot1Date);
+    let currentDate = new Date(slotStartBase);
     while (
       currentDate <= endDate &&
       getDayOfWeek(currentDate) !== slot.dayOfWeek
@@ -217,13 +226,29 @@ export function generateSchedule(
 
     const { date: currentDate, deliveryMode, slotIndex } = dateQueues.shift()!;
 
-    if (currentDate > endDate) continue;
+    if (currentDate > endDate) {
+      if (classNumber === courseDays - 1) {
+        const lastDayOfWeek = getDayOfWeek(endDate);
+        const lastDayName = DAY_NAMES_FULL[lastDayOfWeek] ?? "不明";
+        classNumber++;
+        schedule.push({
+          date: new Date(endDate),
+          dateStr: formatDate(endDate),
+          dayOfWeek: lastDayName,
+          classNumber,
+          isHoliday: false,
+          deliveryMode,
+        });
+      }
+      continue;
+    }
 
     const holidayInfo = isHoliday(currentDate, yearData);
     const currentDayOfWeek = getDayOfWeek(currentDate);
     const dayOfWeekName = DAY_NAMES_FULL[currentDayOfWeek] ?? "不明";
 
-    if (holidayInfo.isHoliday) {
+    // OD は配信日が休息日でも安排する（休日考慮しない）
+    if (holidayInfo.isHoliday && deliveryMode !== "on-demand") {
       schedule.push({
         date: new Date(currentDate),
         dateStr: formatDate(currentDate),
