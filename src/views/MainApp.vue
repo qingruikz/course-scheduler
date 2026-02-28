@@ -523,44 +523,70 @@
                   </div>
                 </div>
               </div>
-              <div class="schedule-list" v-if="schedule.length > 0">
-                <div
-                  v-for="(item, index) in schedule"
-                  :key="index"
-                  :class="['schedule-item', { holiday: item.isHoliday }]"
-                  :title="scheduleItemTitle(item)"
-                >
-                  <span v-if="item.isHoliday">
-                    {{ item.dateStr }} （休講）{{ item.holidayReason }}
-                  </span>
-                  <span v-else class="schedule-item-content">
-                    <span
-                      class="schedule-date"
-                      :title="`${item.dateStr} 第${item.classNumber}回`"
-                      >{{ item.dateStr }} 第{{ item.classNumber }}回</span
+              <div class="schedule-list-wrap" v-if="schedule.length > 0">
+                <table class="schedule-table">
+                  <thead>
+                    <tr>
+                      <th class="schedule-th-label">回／休講</th>
+                      <th class="schedule-th-date">日付</th>
+                      <th class="schedule-th-delivery">実施方法</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(item, index) in schedule"
+                      :key="index"
+                      :class="['schedule-row', { holiday: item.isHoliday }]"
                     >
-                    <span
-                      :class="[
-                        'delivery-icon-wrapper',
-                        item.deliveryMode === 'online'
-                          ? 'delivery-online'
-                          : item.deliveryMode === 'on-demand'
-                            ? 'delivery-on-demand'
-                            : 'delivery-face-to-face',
-                      ]"
-                      @mouseenter="
-                        showDeliveryPopover($event, item.deliveryMode)
-                      "
-                      @mouseleave="hideDeliveryPopover"
-                    >
-                      <DeliveryIcon
-                        :mode="item.deliveryMode ?? 'face-to-face'"
-                        :size="16"
-                        class="delivery-icon"
-                      />
-                    </span>
-                  </span>
-                </div>
+                      <td class="schedule-col-label">
+                        <span
+                          v-if="item.isHoliday"
+                          class="schedule-label-cell schedule-holiday-label schedule-holiday-tooltip"
+                          @mouseenter="
+                            showHolidayPopover(
+                              $event,
+                              item.dateStr,
+                              item.holidayReason,
+                            )
+                          "
+                          @mouseleave="hideDeliveryPopover"
+                        >
+                          （休講）
+                        </span>
+                        <span v-else class="schedule-label-cell">
+                          第{{
+                            String(item.classNumber ?? 0).padStart(2, "0")
+                          }}回
+                        </span>
+                      </td>
+                      <td class="schedule-col-date">
+                        {{ formatScheduleDateShort(item.date) }}
+                      </td>
+                      <td class="schedule-col-delivery">
+                        <span
+                          :class="[
+                            'delivery-icon-wrapper',
+                            item.deliveryMode === 'online'
+                              ? 'delivery-online'
+                              : item.deliveryMode === 'on-demand'
+                                ? 'delivery-on-demand'
+                                : 'delivery-face-to-face',
+                          ]"
+                          @mouseenter="
+                            showDeliveryPopover($event, item.deliveryMode)
+                          "
+                          @mouseleave="hideDeliveryPopover"
+                        >
+                          <DeliveryIcon
+                            :mode="item.deliveryMode ?? 'face-to-face'"
+                            :size="16"
+                            class="delivery-icon"
+                          />
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </template>
             <div v-else class="schedule-empty-message">
@@ -1367,6 +1393,15 @@ function handleExport(type: string) {
   showExportMenu.value = false;
 }
 
+/** 授業日程リスト用：日付を 2026/04/02（月） 形式で表示 */
+function formatScheduleDateShort(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const dow = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
+  return `${y}/${m}/${d}（${dow}）`;
+}
+
 function scheduleItemTitle(item: ScheduleItem): string {
   if (item.isHoliday) {
     return `${item.dateStr} （休講）${item.holidayReason}`;
@@ -1422,6 +1457,22 @@ function showDeliveryPopover(
       : deliveryMode === "on-demand"
         ? "オンライン（オンデマンド）"
         : "対面";
+  deliveryPopover.value = {
+    visible: true,
+    text,
+    x: rect.left + rect.width / 2,
+    y: rect.top - 5,
+  };
+}
+
+function showHolidayPopover(
+  event: MouseEvent,
+  _dateStr: string,
+  reason: string | undefined,
+) {
+  const target = event.currentTarget as HTMLElement;
+  const rect = target.getBoundingClientRect();
+  const text = reason ? `（休講）${reason}` : "（休講）";
   deliveryPopover.value = {
     visible: true,
     text,
@@ -1990,52 +2041,97 @@ function hideDeliveryPopover() {
   background: #f5f5f5;
 }
 
-.schedule-list {
+.schedule-list-wrap {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  min-width: 0;
+  overflow: auto;
   border: 1px solid #eee;
   border-radius: 4px;
-  padding: 10px;
 }
 
-.schedule-item {
-  padding: 8px;
-  margin-bottom: 4px;
-  border-radius: 4px;
-  background: #e3f2fd;
+.schedule-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 4px;
   font-size: 13px;
-  overflow: hidden;
+  table-layout: fixed;
 }
 
-/* 休講時のみ：長いテキストを1行で省略、ホバーで title に全文表示 */
-.schedule-item.holiday > span:first-child {
+.schedule-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f5f5f5;
+}
+
+.schedule-table th {
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 1px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.schedule-th-label {
+  width: 5.5em;
+}
+
+.schedule-th-date {
+  width: 7.5em;
+}
+
+.schedule-th-delivery {
+  width: 4.5em;
+  text-align: center;
+}
+
+.schedule-table td {
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.schedule-row td {
+  background: #e3f2fd;
+  color: #000;
+}
+
+.schedule-row.holiday td {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.schedule-col-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-label-cell {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.schedule-item.holiday {
-  background: #ffebee;
-  color: #c62828;
+.schedule-holiday-label {
+  min-width: 0;
 }
 
-.schedule-item-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  min-width: 0;
-  flex-wrap: nowrap;
+.schedule-holiday-tooltip {
+  cursor: pointer;
 }
 
-.schedule-date {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.schedule-col-date {
   white-space: nowrap;
+}
+
+.schedule-col-delivery {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .delivery-icon-wrapper {
