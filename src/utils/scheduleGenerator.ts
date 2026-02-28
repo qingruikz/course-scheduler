@@ -247,7 +247,7 @@ export function generateSchedule(
     const currentDayOfWeek = getDayOfWeek(currentDate);
     const dayOfWeekName = DAY_NAMES_FULL[currentDayOfWeek] ?? "不明";
 
-    // OD は配信日が休息日でも安排する（休日考慮しない）
+    // RT の休講日：休日行を追加し、同日スロットを次週へ
     if (holidayInfo.isHoliday && deliveryMode !== "on-demand") {
       schedule.push({
         date: new Date(currentDate),
@@ -256,9 +256,6 @@ export function generateSchedule(
         isHoliday: true,
         holidayReason: holidayInfo.reason,
       });
-      // 同日に複数スロットがある場合、同じ休日を重複表示しないため、
-      // 同日の他のスロットをすべて次週に進める
-      // 注意: 今回 pop した slot も次週に進める必要がある（キューに戻さないと slot が失われる）
       const sameDateEntries: typeof dateQueues = [];
       const restEntries: typeof dateQueues = [];
       for (const e of dateQueues) {
@@ -281,28 +278,103 @@ export function generateSchedule(
         }
       }
       sortBySlotOrder();
-    } else {
-      classNumber++;
-      schedule.push({
-        date: new Date(currentDate),
-        dateStr: formatDate(currentDate),
-        dayOfWeek: dayOfWeekName,
-        classNumber,
-        isHoliday: false,
-        deliveryMode,
-      });
+      continue;
+    }
 
-      const nextDate = new Date(currentDate);
-      nextDate.setDate(nextDate.getDate() + 7);
-      if (nextDate <= endDate) {
-        const slot = classSlots[slotIndex]!;
-        dateQueues.push({
-          date: nextDate,
-          deliveryMode: slot.deliveryType,
-          slotIndex,
-        });
-        sortBySlotOrder();
+    // OD で配信日が休講日のとき：休講日対応（配信／スキップ／前の授業日）に従う
+    if (holidayInfo.isHoliday && deliveryMode === "on-demand") {
+      const slot = classSlots[slotIndex]!;
+      const handling = slot.odHolidayHandling ?? "deliver";
+
+      if (handling === "skip") {
+        // スキップ：当週は配信しない、次週の同曜日へ
+        const nextDate = new Date(currentDate);
+        nextDate.setDate(nextDate.getDate() + 7);
+        if (nextDate <= endDate) {
+          dateQueues.push({
+            date: nextDate,
+            deliveryMode: slot.deliveryType,
+            slotIndex,
+          });
+          sortBySlotOrder();
+        }
+        continue;
       }
+
+      if (handling === "previous") {
+        // 前の授業日：当週でこの日より前の最初の非休講日で配信
+        const weekStart = new Date(currentDate);
+        weekStart.setDate(weekStart.getDate() - ((currentDate.getDay() + 6) % 7));
+        let d = new Date(currentDate);
+        d.setDate(d.getDate() - 1);
+        let found = false;
+        while (d.getTime() >= weekStart.getTime() && d.getTime() >= startDate.getTime()) {
+          if (!isHoliday(d, yearData).isHoliday) {
+            found = true;
+            break;
+          }
+          d.setDate(d.getDate() - 1);
+        }
+        if (!found) {
+          const nextDate = new Date(currentDate);
+          nextDate.setDate(nextDate.getDate() + 7);
+          if (nextDate <= endDate) {
+            dateQueues.push({
+              date: nextDate,
+              deliveryMode: slot.deliveryType,
+              slotIndex,
+            });
+            sortBySlotOrder();
+          }
+          continue;
+        }
+        classNumber++;
+        const dayOfWeekNameD = DAY_NAMES_FULL[getDayOfWeek(d)] ?? "不明";
+        schedule.push({
+          date: new Date(d),
+          dateStr: formatDate(d),
+          dayOfWeek: dayOfWeekNameD,
+          classNumber,
+          isHoliday: false,
+          deliveryMode,
+        });
+        const nextDate = new Date(currentDate);
+        nextDate.setDate(nextDate.getDate() + 7);
+        if (nextDate <= endDate) {
+          dateQueues.push({
+            date: nextDate,
+            deliveryMode: slot.deliveryType,
+            slotIndex,
+          });
+          sortBySlotOrder();
+        }
+        continue;
+      }
+
+      // handling === "deliver"：休講日でもその曜日に照常配信
+    }
+
+    // 非休講日、または OD で「配信」のとき
+    classNumber++;
+    schedule.push({
+      date: new Date(currentDate),
+      dateStr: formatDate(currentDate),
+      dayOfWeek: dayOfWeekName,
+      classNumber,
+      isHoliday: false,
+      deliveryMode,
+    });
+
+    const nextDate = new Date(currentDate);
+    nextDate.setDate(nextDate.getDate() + 7);
+    if (nextDate <= endDate) {
+      const slot = classSlots[slotIndex]!;
+      dateQueues.push({
+        date: nextDate,
+        deliveryMode: slot.deliveryType,
+        slotIndex,
+      });
+      sortBySlotOrder();
     }
   }
 

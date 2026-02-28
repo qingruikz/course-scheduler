@@ -71,12 +71,17 @@ export type ClassesPerWeek = 1 | 2;
 export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=日曜日, 1=月曜日, ...
 export type DeliveryMode = "online" | "face-to-face" | "on-demand";
 
+/** OD 時の休講日の扱い */
+export type OdHolidayHandling = "deliver" | "skip" | "previous";
+
 /** 1週間あたりの1スロット分の授業設定（実施方法・曜日・時限） */
 export interface ClassSlot {
   deliveryType: DeliveryMode;
   dayOfWeek: DayOfWeek;
   /** RT（対面・オンライン）のみ。OD では不要 */
   period?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  /** OD のみ。休講日の対応：照常配信・スキップ・前の授業日 */
+  odHolidayHandling?: OdHolidayHandling;
 }
 
 /** ICS 出力用: 1つの曜日スロット（時限 or カスタム時間 + 教室） */
