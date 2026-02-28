@@ -153,52 +153,28 @@ export function generateSchedule(
   const schedule: ScheduleItem[] = [];
   let classNumber = 0;
 
-  // Slot ① の曜日が学期内で最初に現れる日。OD があるときのみ slot 順を考慮する。
-  const firstSlot = classSlots[0];
-  if (!firstSlot) return [];
+  if (classSlots.length === 0) return [];
 
-  const hasOD = classSlots.some((s) => s.deliveryType === "on-demand");
-
-  let firstSlot1Date = new Date(startDate);
-  while (
-    firstSlot1Date <= endDate &&
-    getDayOfWeek(firstSlot1Date) !== firstSlot.dayOfWeek
-  ) {
-    firstSlot1Date.setDate(firstSlot1Date.getDate() + 1);
-  }
-  if (firstSlot1Date > endDate) return [];
-
-  const MS_PER_DAY = 24 * 60 * 60 * 1000;
-  const weekIndex = (d: Date) =>
-    Math.floor((d.getTime() - firstSlot1Date.getTime()) / (7 * MS_PER_DAY));
-
-  // 全 RT のときは日付順で slot を並べる。OD があるときは slot1 起点の週順＋slot 順。
+  // 日付順で slot を並べる（全 slot とも学期内の該当曜日初日から、互いに独立）
   const sortBySlotOrder = () =>
     dateQueues.sort((a, b) => {
-      if (hasOD) {
-        const wa = weekIndex(a.date);
-        const wb = weekIndex(b.date);
-        if (wa !== wb) return wa - wb;
-        return a.slotIndex - b.slotIndex;
-      }
       const ta = a.date.getTime();
       const tb = b.date.getTime();
       if (ta !== tb) return ta - tb;
       return a.slotIndex - b.slotIndex;
     });
 
-  // 日付キュー: { date, deliveryMode, slotIndex } で slotIndex のスロットの次回日を管理
+  // 日付キュー: 各 slot の次回日を管理
   const dateQueues: Array<{
     date: Date;
     deliveryMode: DeliveryMode;
     slotIndex: number;
   }> = [];
 
-  // 全 RT のときは各 slot を学期内のその曜日の「最初の日」から開始。OD があるときは slot1 の初回以降から。
-  const slotStartBase = hasOD ? firstSlot1Date : startDate;
+  // 各 slot を学期 startDate から見て、該当曜日の学期内「最初の日」で開始
   for (let i = 0; i < classSlots.length; i++) {
     const slot = classSlots[i]!;
-    let currentDate = new Date(slotStartBase);
+    let currentDate = new Date(startDate);
     while (
       currentDate <= endDate &&
       getDayOfWeek(currentDate) !== slot.dayOfWeek
@@ -226,29 +202,14 @@ export function generateSchedule(
 
     const { date: currentDate, deliveryMode, slotIndex } = dateQueues.shift()!;
 
-    if (currentDate > endDate) {
-      if (classNumber === courseDays - 1) {
-        const lastDayOfWeek = getDayOfWeek(endDate);
-        const lastDayName = DAY_NAMES_FULL[lastDayOfWeek] ?? "不明";
-        classNumber++;
-        schedule.push({
-          date: new Date(endDate),
-          dateStr: formatDate(endDate),
-          dayOfWeek: lastDayName,
-          classNumber,
-          isHoliday: false,
-          deliveryMode,
-        });
-      }
-      continue;
-    }
+    if (currentDate > endDate) continue;
 
     const holidayInfo = isHoliday(currentDate, yearData);
     const currentDayOfWeek = getDayOfWeek(currentDate);
     const dayOfWeekName = DAY_NAMES_FULL[currentDayOfWeek] ?? "不明";
 
-    // RT の休講日：休日行を追加し、同日スロットを次週へ
-    if (holidayInfo.isHoliday && deliveryMode !== "on-demand") {
+    // 休講日：休日行を追加し、同日の全 slot を次週へ（RT/OD 同一扱い）
+    if (holidayInfo.isHoliday) {
       schedule.push({
         date: new Date(currentDate),
         dateStr: formatDate(currentDate),
@@ -281,80 +242,7 @@ export function generateSchedule(
       continue;
     }
 
-    // OD で配信日が休講日のとき：休講日対応（配信／スキップ／前の授業日）に従う
-    if (holidayInfo.isHoliday && deliveryMode === "on-demand") {
-      const slot = classSlots[slotIndex]!;
-      const handling = slot.odHolidayHandling ?? "deliver";
-
-      if (handling === "skip") {
-        // スキップ：当週は配信しない、次週の同曜日へ
-        const nextDate = new Date(currentDate);
-        nextDate.setDate(nextDate.getDate() + 7);
-        if (nextDate <= endDate) {
-          dateQueues.push({
-            date: nextDate,
-            deliveryMode: slot.deliveryType,
-            slotIndex,
-          });
-          sortBySlotOrder();
-        }
-        continue;
-      }
-
-      if (handling === "previous") {
-        // 前の授業日：当週でこの日より前の最初の非休講日で配信
-        const weekStart = new Date(currentDate);
-        weekStart.setDate(weekStart.getDate() - ((currentDate.getDay() + 6) % 7));
-        let d = new Date(currentDate);
-        d.setDate(d.getDate() - 1);
-        let found = false;
-        while (d.getTime() >= weekStart.getTime() && d.getTime() >= startDate.getTime()) {
-          if (!isHoliday(d, yearData).isHoliday) {
-            found = true;
-            break;
-          }
-          d.setDate(d.getDate() - 1);
-        }
-        if (!found) {
-          const nextDate = new Date(currentDate);
-          nextDate.setDate(nextDate.getDate() + 7);
-          if (nextDate <= endDate) {
-            dateQueues.push({
-              date: nextDate,
-              deliveryMode: slot.deliveryType,
-              slotIndex,
-            });
-            sortBySlotOrder();
-          }
-          continue;
-        }
-        classNumber++;
-        const dayOfWeekNameD = DAY_NAMES_FULL[getDayOfWeek(d)] ?? "不明";
-        schedule.push({
-          date: new Date(d),
-          dateStr: formatDate(d),
-          dayOfWeek: dayOfWeekNameD,
-          classNumber,
-          isHoliday: false,
-          deliveryMode,
-        });
-        const nextDate = new Date(currentDate);
-        nextDate.setDate(nextDate.getDate() + 7);
-        if (nextDate <= endDate) {
-          dateQueues.push({
-            date: nextDate,
-            deliveryMode: slot.deliveryType,
-            slotIndex,
-          });
-          sortBySlotOrder();
-        }
-        continue;
-      }
-
-      // handling === "deliver"：休講日でもその曜日に照常配信
-    }
-
-    // 非休講日、または OD で「配信」のとき
+    // 非休講日：授業/配信として 1 回追加
     classNumber++;
     schedule.push({
       date: new Date(currentDate),

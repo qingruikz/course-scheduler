@@ -368,36 +368,12 @@
                       "
                     >
                       <option
-                        v-for="(fullName, d) in dayNames"
+                        v-for="d in [1, 2, 3, 4, 5, 6]"
                         :key="d"
                         :value="d"
                       >
-                        {{ fullName }}
+                        {{ dayNames[d] }}
                       </option>
-                    </select>
-                  </div>
-                </div>
-                <div
-                  v-if="!isRealtime(slot)"
-                  class="slot-field slot-field-od-holiday"
-                >
-                  <span class="slot-label">休講日対応</span>
-                  <div class="slot-od-holiday-wrap">
-                    <select
-                      :value="slot.odHolidayHandling ?? 'deliver'"
-                      class="slot-select slot-od-holiday-select"
-                      title="休講日の対応：配信／見送／繰上"
-                      @change="
-                        updateSlotOdHolidayHandling(
-                          slotIdx,
-                          ($event.target as HTMLSelectElement)
-                            .value as OdHolidayHandling,
-                        )
-                      "
-                    >
-                      <option value="deliver" title="配信">配信</option>
-                      <option value="skip" title="見送">見送</option>
-                      <option value="previous" title="前の授業日">繰上</option>
                     </select>
                   </div>
                 </div>
@@ -437,9 +413,6 @@
                 </div>
               </div>
             </div>
-            <p v-if="hasOD" class="slot-od-notice">
-              ※ 第1回授業の開始曜日は設定順で変更可能
-            </p>
           </div>
 
           <button class="generate-button" @click="generateSchedule">
@@ -772,7 +745,6 @@ import type {
   DayOfWeek,
   DeliveryMode,
   ClassSlot,
-  OdHolidayHandling,
 } from "../types";
 import { defaultClassSlot } from "../types";
 import {
@@ -943,9 +915,6 @@ const selectedClassesPerWeek = computed({
 });
 const classSlots = computed(
   () => settingsStore.currentSubjectSettings.classSlots,
-);
-const hasOD = computed(() =>
-  classSlots.value.some((s) => s.deliveryType === "on-demand"),
 );
 const openDeliveryDropdownIdx = ref<number | null>(null);
 const slotDeliveryTriggerRefs = ref<Record<number, HTMLButtonElement | null>>(
@@ -1290,9 +1259,6 @@ function setSlotDelivery(slotIdx: number, mode: DeliveryMode) {
   slot.deliveryType = mode;
   if (mode === "on-demand") {
     delete slot.period;
-    if (slot.odHolidayHandling === undefined) {
-      slot.odHolidayHandling = "deliver";
-    }
   } else if (!slot.period) {
     slot.period = 1;
   }
@@ -1311,16 +1277,6 @@ function updateSlotDay(slotIdx: number, dayOfWeek: DayOfWeek) {
 function updateSlotPeriod(slotIdx: number, period: 1 | 2 | 3 | 4 | 5 | 6 | 7) {
   const slots = classSlots.value.map((s, i) =>
     i === slotIdx ? { ...s, period } : s,
-  );
-  settingsStore.patchCurrentSubjectSettings({ classSlots: slots });
-}
-
-function updateSlotOdHolidayHandling(
-  slotIdx: number,
-  value: OdHolidayHandling,
-) {
-  const slots = classSlots.value.map((s, i) =>
-    i === slotIdx ? { ...s, odHolidayHandling: value } : s,
   );
   settingsStore.patchCurrentSubjectSettings({ classSlots: slots });
 }
@@ -2224,15 +2180,6 @@ function hideDeliveryPopover() {
   margin-bottom: 0;
 }
 
-.slot-od-notice {
-  margin-top: 10px;
-  padding: 8px 0 0;
-  font-size: 12px;
-  color: #666;
-  line-height: 1.5;
-  border-top: 1px solid #e9ecef;
-}
-
 .slot-field {
   display: flex;
   flex-direction: column;
@@ -2365,44 +2312,6 @@ function hideDeliveryPopover() {
   min-width: 70px;
   opacity: 0;
   cursor: pointer;
-}
-
-.slot-od-holiday-hint {
-  font-size: 11px;
-  color: #888;
-  margin: 0 0 4px 0;
-  line-height: 1.2;
-}
-
-.slot-field-od-holiday .slot-label {
-  margin-bottom: 0;
-}
-
-.slot-od-holiday-wrap {
-  width: 56px;
-  height: 32px;
-  flex-shrink: 0;
-}
-
-.slot-od-holiday-select {
-  width: 100%;
-  height: 100%;
-  padding: 0 18px 0 6px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 13px;
-  background: white;
-  cursor: pointer;
-  appearance: none;
-  /* 時限と同じ矢印：6×3px 下向き三角 #666、right 6px */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='3' viewBox='0 0 6 3'%3E%3Cpath fill='%23666' d='M0 0l3 3 3-3z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
-  background-size: 6px 3px;
-}
-
-.slot-od-holiday-select option {
-  font-size: 13px;
 }
 
 .slot-period-wrap {
