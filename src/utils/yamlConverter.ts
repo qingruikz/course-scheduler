@@ -24,6 +24,8 @@ interface YamlEvent {
 
 interface YamlYearData {
   year: number;
+  created_at?: string;
+  updated_at?: string;
   semesters: {
     [key: string]: YamlSemester;
   };
@@ -151,10 +153,19 @@ export function convertYamlToCalendarData(
     years[yearStr] = convertYamlYearData(yamlData);
   }
 
+  const defaultDate =
+    new Date().toISOString().split("T")[0] ||
+    new Date().toISOString().substring(0, 10);
+  const createdAt = ensureDateString(
+    yamlDataArray.find((d) => d.created_at)?.created_at ?? defaultDate,
+  );
+  const updatedAt = ensureDateString(
+    yamlDataArray.find((d) => d.updated_at)?.updated_at ?? defaultDate,
+  );
+
   return {
-    created_at:
-      new Date().toISOString().split("T")[0] ||
-      new Date().toISOString().substring(0, 10),
+    createdAt,
+    updatedAt,
     years,
   };
 }

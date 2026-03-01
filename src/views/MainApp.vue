@@ -12,6 +12,7 @@
         :available-years="availableYears"
         :year-data="currentYearData"
         :created-at="createdAt"
+        :updated-at="updatedAt"
         @generate="generateSchedule"
         @export-settings="onConditionsExportSettings"
         @import-settings="onConditionsImportSettings"
@@ -223,6 +224,7 @@ const calendarData = ref<CalendarData | null>(null);
 const currentYearData = ref<YearData | null>(null);
 const availableYears = ref<number[]>([]);
 const createdAt = ref<string>("");
+const updatedAt = ref<string>("");
 const showCalendarAddModal = ref(false);
 const calendarAddModalSource = ref<"schedule" | "calendar">("schedule");
 const calendarAddModalInitialStep = ref(0);
@@ -356,8 +358,9 @@ async function loadCalendarData() {
         .map((y) => parseInt(y))
         .sort((a, b) => a - b);
 
-      // 作成日を取得
-      createdAt.value = calendarData.value.created_at || "";
+      // 作成日・更新日を取得
+      createdAt.value = calendarData.value.createdAt || "";
+      updatedAt.value = calendarData.value.updatedAt || "";
 
       // 最新年度（最大値）をデフォルトとして設定
       if (availableYears.value.length > 0) {
@@ -540,7 +543,6 @@ onMounted(async () => {
   await loadCalendarLayoutForYear(storeSelectedYear.value ?? 0);
 
   checkCalendarModalUrlParams();
-
 });
 
 function isRealtime(slot: ClassSlot): boolean {

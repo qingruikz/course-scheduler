@@ -63,8 +63,8 @@
             {{ formatAcademicYear(year) }}
           </option>
         </select>
-        <p class="calendar-info" v-if="createdAt">
-          学年暦更新日: {{ createdAt }}
+        <p class="calendar-info" v-if="calendarUpdateDate">
+          学年暦更新日: {{ calendarUpdateDate }}
         </p>
       </div>
 
@@ -379,7 +379,10 @@ const props = defineProps<{
   availableYears: number[];
   yearData: YearData | null;
   createdAt: string;
+  updatedAt?: string;
 }>();
+
+const calendarUpdateDate = computed(() => props.updatedAt || props.createdAt || "");
 
 const emit = defineEmits<{
   (e: "generate"): void;

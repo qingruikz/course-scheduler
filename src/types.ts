@@ -9,7 +9,8 @@ export interface YearData {
 }
 
 export interface CalendarData {
-  created_at: string;
+  createdAt: string;
+  updatedAt?: string;
   years: {
     [year: string]: YearData;
   };
