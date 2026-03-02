@@ -36,9 +36,7 @@
                       'official-day-cell',
                       {
                         highlighted:
-                          showMarkers &&
-                          day.isHighlighted &&
-                          !day.isHoliday,
+                          showMarkers && day.isHighlighted && !day.isHoliday,
                       },
                       { holiday: showMarkers && day.isHoliday },
                     ]"
@@ -60,7 +58,8 @@
                           'marker-class': !day.dayDisplayInfo.isHoliday,
                         }"
                       >
-                        <template v-if="day.dayDisplayInfo.isHoliday"> </template>
+                        <template v-if="day.dayDisplayInfo.isHoliday">
+                        </template>
                         <template v-else>
                           <DeliveryIcon
                             :mode="
@@ -102,8 +101,10 @@ const props = withDefaults(
     layout: CalendarLayout | null;
     twoColumns?: boolean;
     showMarkers?: boolean;
+    /** スケジュールが空のとき表示する期間（集中授業モードでカレンダーを表示する用） */
+    emptyDisplayRange?: { start: string; end: string } | null;
   }>(),
-  { twoColumns: true, showMarkers: true },
+  { twoColumns: true, showMarkers: true, emptyDisplayRange: null },
 );
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -156,10 +157,20 @@ const scheduleInfo = computed(() => {
 });
 
 const displayedMonths = computed(() => {
-  if (props.schedule.length === 0) return [];
-  const dates = props.schedule.map((item) => item.date);
-  const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-  const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  let minDate: Date;
+  let maxDate: Date;
+
+  if (props.schedule.length > 0) {
+    const dates = props.schedule.map((item) => item.date);
+    minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  } else if (props.emptyDisplayRange?.start && props.emptyDisplayRange?.end) {
+    minDate = new Date(props.emptyDisplayRange.start);
+    maxDate = new Date(props.emptyDisplayRange.end);
+  } else {
+    return [];
+  }
+
   // 学期より1ヶ月多く表示（確認用）
   let endYear = maxDate.getFullYear();
   let endMonth = maxDate.getMonth();

@@ -24,6 +24,8 @@
         <div class="right-content-grid">
           <ScheduleListSection
             :schedule="schedule"
+            :is-intensive-empty="isIntensiveEmptyState && schedule.length === 0"
+            :intensive-remaining="intensiveRemaining"
             @open-ics-export="openIcsExportModal"
             @export="handleExport"
             @show-delivery-popover="showDeliveryPopover"
@@ -31,7 +33,10 @@
           />
 
           <div class="calendar-section">
-            <div v-if="schedule.length > 0" class="calendar-mode-switch">
+            <div
+              v-if="schedule.length > 0 || isIntensiveEmptyState"
+              class="calendar-mode-switch"
+            >
               <div class="calendar-switch-item">
                 <span class="switch-label">学年暦背景</span>
                 <label class="toggle-switch">
@@ -67,16 +72,24 @@
               </div>
             </div>
             <CalendarView
-              v-if="schedule.length > 0 && !useOfficialCalendarBackground"
+              v-if="
+                (schedule.length > 0 || isIntensiveEmptyState) &&
+                !useOfficialCalendarBackground
+              "
               :schedule="schedule"
               :yearData="currentYearData"
               :year="storeSelectedYear ?? 0"
+              :empty-display-range="
+                isIntensiveEmptyState && intensiveEmptyDisplayRange
+                  ? intensiveEmptyDisplayRange
+                  : null
+              "
               :two-columns="calendarTwoColumns"
               :show-markers="showCalendarMarkers"
             />
             <OfficialCalendarView
               v-else-if="
-                schedule.length > 0 &&
+                (schedule.length > 0 || isIntensiveEmptyState) &&
                 useOfficialCalendarBackground &&
                 calendarLayout
               "
@@ -84,12 +97,17 @@
               :layout="calendarLayout"
               :semester-start="semesterPeriod?.start"
               :semester-end="semesterPeriod?.end"
+              :empty-display-range="
+                isIntensiveEmptyState && intensiveEmptyDisplayRange
+                  ? intensiveEmptyDisplayRange
+                  : null
+              "
               :two-columns="calendarTwoColumns"
               :show-markers="showCalendarMarkers"
             />
             <div
               v-else-if="
-                schedule.length > 0 &&
+                (schedule.length > 0 || isIntensiveEmptyState) &&
                 useOfficialCalendarBackground &&
                 !calendarLayout
               "
@@ -298,7 +316,25 @@ const selectedClassesPerWeek = computed(
 const classSlots = computed(
   () => settingsStore.currentSubjectSettings.classSlots,
 );
+/** 夏期・春季集中授業期間のときは集中授業モード */
+const isIntensiveSemester = computed(() => {
+  const s = selectedSemester.value;
+  return s === "夏期集中授業期間" || s === "春季集中授業期間";
+});
 const schedule = ref<ScheduleItem[]>([]);
+/** 集中授業モードで「スケジュールを生成」を押したあとの空リスト表示用 */
+const isIntensiveEmptyState = ref(false);
+const intensiveRemaining = ref(7);
+/** 集中授業で「スケジュールを生成」を押した時点の学期範囲（カレンダー表示用。学期を切り替えても再生成まで変えない） */
+const intensiveEmptyDisplayRange = ref<{ start: string; end: string } | null>(
+  null,
+);
+watch(selectedSemester, (s) => {
+  if (s !== "夏期集中授業期間" && s !== "春季集中授業期間") {
+    isIntensiveEmptyState.value = false;
+    intensiveEmptyDisplayRange.value = null;
+  }
+});
 const OFFICIAL_CALENDAR_URL =
   "https://www.musashino-u.ac.jp/student-life/campus_life/calendar.html";
 const deliveryPopover = ref<{
@@ -566,6 +602,16 @@ function generateSchedule() {
     return;
   }
 
+  if (isIntensiveSemester.value) {
+    schedule.value = [];
+    isIntensiveEmptyState.value = true;
+    intensiveRemaining.value = settingsStore.currentSubjectSettings.courseDays;
+    const period = semesterPeriod.value;
+    intensiveEmptyDisplayRange.value =
+      period != null ? { start: period.start, end: period.end } : null;
+    return;
+  }
+
   if (!validateRtSlotUniqueness()) {
     showNotification("リアルタイム授業の曜日・時限が重複しています。", "error");
     return;
@@ -577,6 +623,7 @@ function generateSchedule() {
     return;
   }
 
+  isIntensiveEmptyState.value = false;
   try {
     if (!currentYearData.value) {
       showNotification("年度データが読み込まれていません。", "error");

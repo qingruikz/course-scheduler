@@ -111,8 +111,10 @@ const props = withDefaults(
     schedule: ScheduleItem[];
     twoColumns?: boolean;
     showMarkers?: boolean;
+    /** スケジュールが空のとき表示する期間（集中授業モードでカレンダーを表示する用） */
+    emptyDisplayRange?: { start: string; end: string } | null;
   }>(),
-  { twoColumns: true, showMarkers: true },
+  { twoColumns: true, showMarkers: true, emptyDisplayRange: null },
 );
 
 // 曜日のラベル（日曜日から土曜日）
@@ -212,15 +214,20 @@ const scheduleInfo = computed(() => {
  *   → 4月、5月、6月の3つのカレンダーを生成
  */
 const displayedMonths = computed(() => {
-  // スケジュールが空の場合は空配列を返す
-  if (props.schedule.length === 0) return [];
+  let minDate: Date;
+  let maxDate: Date;
 
-  // スケジュールに含まれるすべての日付を取得
-  const dates = props.schedule.map((item) => item.date);
-  // 最小日付（スケジュールの開始日）を取得
-  const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-  // 最大日付（スケジュールの終了日）を取得
-  const maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  if (props.schedule.length > 0) {
+    const dates = props.schedule.map((item) => item.date);
+    minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
+  } else if (props.emptyDisplayRange?.start && props.emptyDisplayRange?.end) {
+    minDate = new Date(props.emptyDisplayRange.start);
+    maxDate = new Date(props.emptyDisplayRange.end);
+  } else {
+    return [];
+  }
+
   // 学期より1ヶ月多く表示（確認用）
   let endYear = maxDate.getFullYear();
   let endMonth = maxDate.getMonth();

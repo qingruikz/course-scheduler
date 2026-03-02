@@ -27,8 +27,15 @@
               ></path>
             </svg>
           </button>
-          <div v-if="showSettingsMenu" class="dropdown-menu dropdown-menu-settings">
-            <button type="button" class="dropdown-item" @click="onSettingsMenuExport">
+          <div
+            v-if="showSettingsMenu"
+            class="dropdown-menu dropdown-menu-settings"
+          >
+            <button
+              type="button"
+              class="dropdown-item"
+              @click="onSettingsMenuExport"
+            >
               設定をエクスポート
             </button>
             <button type="button" class="dropdown-item" @click="triggerImport">
@@ -154,7 +161,8 @@
           class="form-control"
           @change="
             settingsStore.patchCurrentSubjectSettings({
-              semester: ($event.target as HTMLSelectElement).value as SemesterOption,
+              semester: ($event.target as HTMLSelectElement)
+                .value as SemesterOption,
             })
           "
         >
@@ -173,14 +181,200 @@
         </p>
       </div>
 
-      <div class="form-group">
+      <!-- 通常授業時: 授業回数・週回数・実施方法を表示 -->
+      <template v-if="!isIntensiveSemester">
+        <div class="form-group">
+          <label>授業回数</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input
+                type="radio"
+                :checked="selectedCourseDays === 7"
+                @change="
+                  settingsStore.patchCurrentSubjectSettings({ courseDays: 7 })
+                "
+              />
+              <span>7回</span>
+            </label>
+            <label class="radio-label">
+              <input
+                type="radio"
+                :checked="selectedCourseDays === 14"
+                @change="
+                  settingsStore.patchCurrentSubjectSettings({ courseDays: 14 })
+                "
+              />
+              <span>14回</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>1週間の授業回数</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input
+                type="radio"
+                name="classes-per-week"
+                :checked="selectedClassesPerWeek === 1"
+                @change="onClassesPerWeekChange(1)"
+              />
+              <span>週1回</span>
+            </label>
+            <label class="radio-label">
+              <input
+                type="radio"
+                name="classes-per-week"
+                :checked="selectedClassesPerWeek === 2"
+                @change="onClassesPerWeekChange(2)"
+              />
+              <span>週2回</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group slot-section">
+          <label>授業の実施方法等</label>
+          <div class="slot-section-inner">
+            <div
+              v-for="(slot, slotIdx) in classSlots"
+              :key="slotIdx"
+              class="slot-row"
+            >
+              <div class="slot-field">
+                <span class="slot-label">実施方法</span>
+                <div class="slot-delivery-wrap">
+                  <button
+                    :ref="
+                      (el) => {
+                        slotDeliveryTriggerRefs[slotIdx] =
+                          el as HTMLButtonElement | null;
+                      }
+                    "
+                    type="button"
+                    class="slot-delivery-trigger"
+                    :title="deliveryTypeLabel(slot.deliveryType)"
+                    @click="toggleDeliveryDropdown(slotIdx)"
+                  >
+                    <DeliveryIcon :mode="slot.deliveryType" class="slot-icon" />
+                  </button>
+                  <Teleport to="body">
+                    <div
+                      v-if="openDeliveryDropdownIdx === slotIdx"
+                      class="slot-delivery-menu slot-delivery-menu-teleported"
+                      :style="deliveryMenuStyle(slotIdx)"
+                    >
+                      <button
+                        type="button"
+                        class="slot-delivery-option"
+                        @click="setSlotDelivery(slotIdx, 'face-to-face')"
+                      >
+                        <DeliveryIcon
+                          mode="face-to-face"
+                          class="slot-option-icon"
+                        />
+                        <span>対面</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="slot-delivery-option"
+                        @click="setSlotDelivery(slotIdx, 'online')"
+                      >
+                        <DeliveryIcon mode="online" class="slot-option-icon" />
+                        <span>オンライン（同時双方向型）</span>
+                      </button>
+                      <button
+                        type="button"
+                        class="slot-delivery-option"
+                        @click="setSlotDelivery(slotIdx, 'on-demand')"
+                      >
+                        <DeliveryIcon
+                          mode="on-demand"
+                          class="slot-option-icon"
+                        />
+                        <span>オンライン（オンデマンド）</span>
+                      </button>
+                    </div>
+                  </Teleport>
+                </div>
+              </div>
+              <div class="slot-field">
+                <span class="slot-label">{{
+                  isRealtime(slot) ? "授業日" : "配信日"
+                }}</span>
+                <div class="slot-day-wrap">
+                  <span class="slot-day-display">{{
+                    dayShortNames[slot.dayOfWeek]
+                  }}</span>
+                  <select
+                    :value="slot.dayOfWeek"
+                    class="slot-select slot-day-select"
+                    :title="isRealtime(slot) ? '授業日' : '配信日'"
+                    @change="
+                      updateSlotDay(
+                        slotIdx,
+                        Number(
+                          ($event.target as HTMLSelectElement).value,
+                        ) as DayOfWeek,
+                      )
+                    "
+                  >
+                    <option v-for="d in [1, 2, 3, 4, 5, 6]" :key="d" :value="d">
+                      {{ dayNames[d] }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+              <div v-if="isRealtime(slot)" class="slot-field">
+                <span class="slot-label">時限</span>
+                <div class="slot-period-wrap">
+                  <span class="slot-period-display">{{
+                    (slot.period ?? 1) + "限"
+                  }}</span>
+                  <select
+                    :value="slot.period ?? 1"
+                    class="slot-select slot-period-select"
+                    title="時限"
+                    @change="
+                      updateSlotPeriod(
+                        slotIdx,
+                        Number(($event.target as HTMLSelectElement).value) as
+                          | 1
+                          | 2
+                          | 3
+                          | 4
+                          | 5
+                          | 6
+                          | 7,
+                      )
+                    "
+                  >
+                    <option
+                      v-for="p in PERIOD_TIMES"
+                      :key="p.period"
+                      :value="p.period"
+                    >
+                      {{ p.period }}限
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- 集中授業期間時: 授業回数のみ（7回/14回、カレンダーで日付を選ぶ前提） -->
+      <div v-else class="form-group">
         <label>授業回数</label>
         <div class="radio-group">
           <label class="radio-label">
             <input
               type="radio"
               :checked="selectedCourseDays === 7"
-              @change="settingsStore.patchCurrentSubjectSettings({ courseDays: 7 })"
+              @change="
+                settingsStore.patchCurrentSubjectSettings({ courseDays: 7 })
+              "
             />
             <span>7回</span>
           </label>
@@ -188,165 +382,12 @@
             <input
               type="radio"
               :checked="selectedCourseDays === 14"
-              @change="settingsStore.patchCurrentSubjectSettings({ courseDays: 14 })"
+              @change="
+                settingsStore.patchCurrentSubjectSettings({ courseDays: 14 })
+              "
             />
             <span>14回</span>
           </label>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>1週間の授業回数</label>
-        <div class="radio-group">
-          <label class="radio-label">
-            <input
-              type="radio"
-              name="classes-per-week"
-              :checked="selectedClassesPerWeek === 1"
-              @change="onClassesPerWeekChange(1)"
-            />
-            <span>週1回</span>
-          </label>
-          <label class="radio-label">
-            <input
-              type="radio"
-              name="classes-per-week"
-              :checked="selectedClassesPerWeek === 2"
-              @change="onClassesPerWeekChange(2)"
-            />
-            <span>週2回</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="form-group slot-section">
-        <label>授業の実施方法等</label>
-        <div class="slot-section-inner">
-          <div
-            v-for="(slot, slotIdx) in classSlots"
-            :key="slotIdx"
-            class="slot-row"
-          >
-            <div class="slot-field">
-              <span class="slot-label">実施方法</span>
-              <div class="slot-delivery-wrap">
-                <button
-                  :ref="
-                    (el) => {
-                      slotDeliveryTriggerRefs[slotIdx] =
-                        el as HTMLButtonElement | null;
-                    }
-                  "
-                  type="button"
-                  class="slot-delivery-trigger"
-                  :title="deliveryTypeLabel(slot.deliveryType)"
-                  @click="toggleDeliveryDropdown(slotIdx)"
-                >
-                  <DeliveryIcon
-                    :mode="slot.deliveryType"
-                    class="slot-icon"
-                  />
-                </button>
-                <Teleport to="body">
-                  <div
-                    v-if="openDeliveryDropdownIdx === slotIdx"
-                    class="slot-delivery-menu slot-delivery-menu-teleported"
-                    :style="deliveryMenuStyle(slotIdx)"
-                  >
-                    <button
-                      type="button"
-                      class="slot-delivery-option"
-                      @click="setSlotDelivery(slotIdx, 'face-to-face')"
-                    >
-                      <DeliveryIcon mode="face-to-face" class="slot-option-icon" />
-                      <span>対面</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="slot-delivery-option"
-                      @click="setSlotDelivery(slotIdx, 'online')"
-                    >
-                      <DeliveryIcon mode="online" class="slot-option-icon" />
-                      <span>オンライン（同時双方向型）</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="slot-delivery-option"
-                      @click="setSlotDelivery(slotIdx, 'on-demand')"
-                    >
-                      <DeliveryIcon mode="on-demand" class="slot-option-icon" />
-                      <span>オンライン（オンデマンド）</span>
-                    </button>
-                  </div>
-                </Teleport>
-              </div>
-            </div>
-            <div class="slot-field">
-              <span class="slot-label">{{
-                isRealtime(slot) ? "授業日" : "配信日"
-              }}</span>
-              <div class="slot-day-wrap">
-                <span class="slot-day-display">{{
-                  dayShortNames[slot.dayOfWeek]
-                }}</span>
-                <select
-                  :value="slot.dayOfWeek"
-                  class="slot-select slot-day-select"
-                  :title="isRealtime(slot) ? '授業日' : '配信日'"
-                  @change="
-                    updateSlotDay(
-                      slotIdx,
-                      Number(
-                        ($event.target as HTMLSelectElement).value,
-                      ) as DayOfWeek,
-                    )
-                  "
-                >
-                  <option
-                    v-for="d in [1, 2, 3, 4, 5, 6]"
-                    :key="d"
-                    :value="d"
-                  >
-                    {{ dayNames[d] }}
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div v-if="isRealtime(slot)" class="slot-field">
-              <span class="slot-label">時限</span>
-              <div class="slot-period-wrap">
-                <span class="slot-period-display">{{
-                  (slot.period ?? 1) + "限"
-                }}</span>
-                <select
-                  :value="slot.period ?? 1"
-                  class="slot-select slot-period-select"
-                  title="時限"
-                  @change="
-                    updateSlotPeriod(
-                      slotIdx,
-                      Number(($event.target as HTMLSelectElement).value) as
-                        | 1
-                        | 2
-                        | 3
-                        | 4
-                        | 5
-                        | 6
-                        | 7,
-                    )
-                  "
-                >
-                  <option
-                    v-for="p in PERIOD_TIMES"
-                    :key="p.period"
-                    :value="p.period"
-                  >
-                    {{ p.period }}限
-                  </option>
-                </select>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -382,7 +423,9 @@ const props = defineProps<{
   updatedAt?: string;
 }>();
 
-const calendarUpdateDate = computed(() => props.updatedAt || props.createdAt || "");
+const calendarUpdateDate = computed(
+  () => props.updatedAt || props.createdAt || "",
+);
 
 const emit = defineEmits<{
   (e: "generate"): void;
@@ -412,6 +455,12 @@ const classSlots = computed(
   () => settingsStore.currentSubjectSettings.classSlots,
 );
 
+/** 夏期・春季集中授業期間のときは集中授業モード（授業回数以下のUIを非表示） */
+const isIntensiveSemester = computed(() => {
+  const s = selectedSemester.value;
+  return s === "夏期集中授業期間" || s === "春季集中授業期間";
+});
+
 const semesterPeriod = computed(() => {
   if (!props.yearData) return null;
   const key: string = selectedSemester.value;
@@ -439,7 +488,9 @@ let subjectBlurTimer: ReturnType<typeof setTimeout> | null = null;
 const showSettingsMenu = ref(false);
 const importFileInputRef = ref<HTMLInputElement | null>(null);
 const openDeliveryDropdownIdx = ref<number | null>(null);
-const slotDeliveryTriggerRefs = ref<Record<number, HTMLButtonElement | null>>({});
+const slotDeliveryTriggerRefs = ref<Record<number, HTMLButtonElement | null>>(
+  {},
+);
 
 watch(
   () => settingsStore.currentSubject,
@@ -588,10 +639,7 @@ function updateSlotDay(slotIdx: number, dayOfWeek: DayOfWeek) {
   settingsStore.patchCurrentSubjectSettings({ classSlots: slots });
 }
 
-function updateSlotPeriod(
-  slotIdx: number,
-  period: 1 | 2 | 3 | 4 | 5 | 6 | 7,
-) {
+function updateSlotPeriod(slotIdx: number, period: 1 | 2 | 3 | 4 | 5 | 6 | 7) {
   const slots = classSlots.value.map((s, i) =>
     i === slotIdx ? { ...s, period } : s,
   );
@@ -610,7 +658,9 @@ function onClassesPerWeekChange(perWeek: 1 | 2) {
     settingsStore.patchCurrentSubjectSettings({
       classesPerWeek: 2,
       classSlots:
-        slots.length >= 2 ? [slots[0]!, slots[1]!] : [slots[0] ?? defaultClassSlot(), second],
+        slots.length >= 2
+          ? [slots[0]!, slots[1]!]
+          : [slots[0] ?? defaultClassSlot(), second],
     });
   }
 }

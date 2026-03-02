@@ -43,27 +43,48 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
               >
-                <path
-                  d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
-                ></path>
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
             </button>
-            <div v-if="showExportMenu" class="dropdown-menu dropdown-menu-export">
-              <button type="button" class="dropdown-item" @click="handleExport('copy')">
+            <div
+              v-if="showExportMenu"
+              class="dropdown-menu dropdown-menu-export"
+            >
+              <button
+                type="button"
+                class="dropdown-item"
+                @click="handleExport('copy')"
+              >
                 クリップボードにコピー
               </button>
-              <button type="button" class="dropdown-item" @click="handleExport('excel')">
+              <button
+                type="button"
+                class="dropdown-item"
+                @click="handleExport('excel')"
+              >
                 Excel
               </button>
-              <button type="button" class="dropdown-item" @click="handleExport('txt')">
+              <button
+                type="button"
+                class="dropdown-item"
+                @click="handleExport('txt')"
+              >
                 TXT
               </button>
-              <button type="button" class="dropdown-item" @click="handleExport('markdown')">
+              <button
+                type="button"
+                class="dropdown-item"
+                @click="handleExport('markdown')"
+              >
                 Markdown
               </button>
-              <button type="button" class="dropdown-item" @click="handleExport('json')">
+              <button
+                type="button"
+                class="dropdown-item"
+                @click="handleExport('json')"
+              >
                 JSON
               </button>
             </div>
@@ -95,7 +116,9 @@
                     ? 'delivery-on-demand'
                     : 'delivery-face-to-face',
               ]"
-              @mouseenter="emit('show-delivery-popover', $event, item.deliveryMode)"
+              @mouseenter="
+                emit('show-delivery-popover', $event, item.deliveryMode)
+              "
               @mouseleave="emit('hide-delivery-popover')"
             >
               <DeliveryIcon
@@ -106,6 +129,19 @@
             </span>
           </span>
         </div>
+      </div>
+    </template>
+    <template v-else-if="isIntensiveEmpty">
+      <div class="schedule-header">
+        <h2>授業日程リスト</h2>
+      </div>
+      <div class="schedule-list schedule-list-empty">
+        <p class="intensive-empty-hint">
+          右側のカレンダーで授業日またはオンデマンド授業の配信日を選択して、授業日程を追加してください。
+        </p>
+        <p class="intensive-remaining">
+          あと {{ intensiveRemaining ?? 0 }} 回の授業が必要です。
+        </p>
       </div>
     </template>
     <div v-else class="schedule-empty-message">
@@ -122,12 +158,20 @@ import DeliveryIcon from "./DeliveryIcon.vue";
 
 defineProps<{
   schedule: ScheduleItem[];
+  /** 集中授業モードで「スケジュールを生成」押下後の空リスト表示用 */
+  isIntensiveEmpty?: boolean;
+  /** 集中授業で必要な残り回数（表示用） */
+  intensiveRemaining?: number;
 }>();
 
 const emit = defineEmits<{
   (e: "open-ics-export"): void;
   (e: "export", type: "copy" | "excel" | "txt" | "markdown" | "json"): void;
-  (e: "show-delivery-popover", event: MouseEvent, mode: DeliveryMode | undefined): void;
+  (
+    e: "show-delivery-popover",
+    event: MouseEvent,
+    mode: DeliveryMode | undefined,
+  ): void;
   (e: "hide-delivery-popover"): void;
 }>();
 
@@ -329,5 +373,27 @@ function handleExport(type: "copy" | "excel" | "txt" | "markdown" | "json") {
   justify-content: center;
   font-size: 16px;
   color: #666;
+}
+
+.schedule-list-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  padding: 20px;
+}
+
+.intensive-empty-hint {
+  margin: 0;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.intensive-remaining {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1976d2;
 }
 </style>

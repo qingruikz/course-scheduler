@@ -122,6 +122,8 @@ export interface SubjectSettings {
   classesPerWeek: ClassesPerWeek;
   /** 1週間あたりのスロット設定（classesPerWeek と一致する長さ） */
   classSlots: ClassSlot[];
+  /** 集中授業期間時の授業回数（夏期・春季集中授業のみ。表示「あとXX回」に使用） */
+  intensiveCourseDays?: number;
   /** @deprecated v1 互換用。インポート時に classSlots へ変換 */
   selectedDaysOfWeek?: DayOfWeek[];
   /** @deprecated v1 互換用。インポート時に classSlots へ変換 */
