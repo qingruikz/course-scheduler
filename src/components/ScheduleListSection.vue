@@ -130,6 +130,26 @@
           </span>
         </div>
       </div>
+      <p
+        v-if="showIntensiveRemaining && (intensiveRemaining ?? 0) > 0"
+        class="intensive-remaining below-list"
+      >
+        あと {{ intensiveRemaining ?? 0 }} 回の授業が必要です。
+      </p>
+      <p
+        v-if="showIntensiveRemaining && (intensiveOverCount ?? 0) > 0"
+        class="intensive-over below-list"
+      >
+        {{ intensiveOverCount ?? 0 }} 回の授業を削除してください。
+      </p>
+      <div
+        v-if="showIntensiveRemaining && schedule.length > 0"
+        class="intensive-reset-wrap"
+      >
+        <button type="button" class="btn-reset" @click="emit('reset-click')">
+          リセット
+        </button>
+      </div>
     </template>
     <template v-else-if="isIntensiveEmpty">
       <div class="schedule-header">
@@ -160,8 +180,12 @@ defineProps<{
   schedule: ScheduleItem[];
   /** 集中授業モードで「スケジュールを生成」押下後の空リスト表示用 */
   isIntensiveEmpty?: boolean;
+  /** 集中授業モードでリスト下に「あとXX回」等を表示するか */
+  showIntensiveRemaining?: boolean;
   /** 集中授業で必要な残り回数（表示用） */
   intensiveRemaining?: number;
+  /** 集中授業で授業回数を超えているとき、削除すべき回数（表示用） */
+  intensiveOverCount?: number;
 }>();
 
 const emit = defineEmits<{
@@ -173,6 +197,7 @@ const emit = defineEmits<{
     mode: DeliveryMode | undefined,
   ): void;
   (e: "hide-delivery-popover"): void;
+  (e: "reset-click"): void;
 }>();
 
 const showExportMenu = ref(false);
@@ -395,5 +420,41 @@ function handleExport(type: "copy" | "excel" | "txt" | "markdown" | "json") {
   font-size: 15px;
   font-weight: 600;
   color: #1976d2;
+}
+
+.intensive-remaining.below-list {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.intensive-over.below-list {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  font-size: 14px;
+  font-weight: 600;
+  color: #c62828;
+}
+
+.intensive-reset-wrap {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+  text-align: center;
+}
+
+.btn-reset {
+  padding: 6px 14px;
+  border: 1px solid #c62828;
+  border-radius: 4px;
+  background: white;
+  color: #c62828;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-reset:hover {
+  background: #ffebee;
 }
 </style>

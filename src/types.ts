@@ -55,6 +55,8 @@ export interface ScheduleItem {
   isHoliday: boolean;
   holidayReason?: string;
   deliveryMode?: DeliveryMode;
+  /** 集中授業で追加した RT 授業の時限（1～7）。通常生成のスケジュールでは未使用 */
+  period?: 1 | 2 | 3 | 4 | 5 | 6 | 7;
 }
 
 export type SemesterOption =

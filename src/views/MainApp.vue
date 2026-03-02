@@ -25,11 +25,14 @@
           <ScheduleListSection
             :schedule="schedule"
             :is-intensive-empty="isIntensiveEmptyState && schedule.length === 0"
+            :show-intensive-remaining="isIntensiveEmptyState"
             :intensive-remaining="intensiveRemaining"
+            :intensive-over-count="intensiveOverCount"
             @open-ics-export="openIcsExportModal"
             @export="handleExport"
             @show-delivery-popover="showDeliveryPopover"
             @hide-delivery-popover="hideDeliveryPopover"
+            @reset-click="showIntensiveResetConfirm = true"
           />
 
           <div class="calendar-section">
@@ -84,8 +87,10 @@
                   ? intensiveEmptyDisplayRange
                   : null
               "
+              :enable-day-click="isIntensiveEmptyState"
               :two-columns="calendarTwoColumns"
               :show-markers="showCalendarMarkers"
+              @day-click="onCalendarDayClick"
             />
             <OfficialCalendarView
               v-else-if="
@@ -102,8 +107,10 @@
                   ? intensiveEmptyDisplayRange
                   : null
               "
+              :enable-day-click="isIntensiveEmptyState"
               :two-columns="calendarTwoColumns"
               :show-markers="showCalendarMarkers"
+              @day-click="onCalendarDayClick"
             />
             <div
               v-else-if="
@@ -170,6 +177,15 @@
       @close="closeCalendarAddModal"
       @download-ics="onCalendarAddDownloadIcs"
     />
+    <!-- 集中授業：授業日程追加モーダル -->
+    <IntensiveCourseAddModal
+      :visible="showIntensiveAddModal"
+      :date="intensiveAddModalDate"
+      :existing-items-on-date="intensiveAddModalExistingOnDate"
+      @close="showIntensiveAddModal = false; intensiveAddModalDate = null"
+      @confirm="onIntensiveAddConfirm"
+      @delete-all="onIntensiveAddDeleteAll"
+    />
     <!-- 科目削除確認 -->
     <ConfirmModal
       :visible="showRemoveSubjectConfirm"
@@ -178,6 +194,15 @@
       cancel-text="キャンセル"
       @confirm="onConfirmRemoveSubject"
       @cancel="onCancelRemoveSubject"
+    />
+    <!-- 集中授業：リセット確認 -->
+    <ConfirmModal
+      :visible="showIntensiveResetConfirm"
+      message="設定した授業日程をすべてクリアして、最初から設定し直しますか？"
+      confirm-text="リセット"
+      cancel-text="キャンセル"
+      @confirm="onConfirmIntensiveReset"
+      @cancel="showIntensiveResetConfirm = false"
     />
     <!-- 統一メッセージ通知（Teleport で body 直下に表示） -->
     <MessageNotification
@@ -206,6 +231,8 @@ import type {
 import {
   generateSchedule as generateScheduleUtil,
   ScheduleGenerationError,
+  formatDate,
+  formatDateShort,
 } from "../utils/scheduleGenerator";
 import {
   exportToExcel,
@@ -220,6 +247,7 @@ import CalendarView from "../components/CalendarView.vue";
 import OfficialCalendarView from "../components/OfficialCalendarView.vue";
 import CalendarAddModal from "../components/CalendarAddModal.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
+import IntensiveCourseAddModal from "../components/IntensiveCourseAddModal.vue";
 import MessageNotification from "../components/MessageNotification.vue";
 import { useRoute, useRouter } from "vue-router";
 import { decodePayload } from "../utils/icsPayload";
@@ -324,7 +352,26 @@ const isIntensiveSemester = computed(() => {
 const schedule = ref<ScheduleItem[]>([]);
 /** 集中授業モードで「スケジュールを生成」を押したあとの空リスト表示用 */
 const isIntensiveEmptyState = ref(false);
-const intensiveRemaining = ref(7);
+/** 集中授業で必要な残り回数（表示用）。空状態時は courseDays、追加ごとに減る */
+const intensiveRemaining = computed(() =>
+  isIntensiveEmptyState.value
+    ? Math.max(
+        0,
+        selectedCourseDays.value -
+          schedule.value.filter((i) => !i.isHoliday).length,
+      )
+    : 0,
+);
+/** 集中授業で設定が授業回数を超えているとき、削除すべき回数（表示用） */
+const intensiveOverCount = computed(() =>
+  isIntensiveEmptyState.value
+    ? Math.max(
+        0,
+        schedule.value.filter((i) => !i.isHoliday).length -
+          selectedCourseDays.value,
+      )
+    : 0,
+);
 /** 集中授業で「スケジュールを生成」を押した時点の学期範囲（カレンダー表示用。学期を切り替えても再生成まで変えない） */
 const intensiveEmptyDisplayRange = ref<{ start: string; end: string } | null>(
   null,
@@ -370,6 +417,19 @@ const calendarEventsForYear = computed(() => {
   const data = currentYearData.value;
   return data?.events ?? [];
 });
+
+const DAY_NAMES_FULL = [
+  "日曜日",
+  "月曜日",
+  "火曜日",
+  "水曜日",
+  "木曜日",
+  "金曜日",
+  "土曜日",
+];
+/** 集中授業：日付クリックで開く「授業追加」モーダル */
+const showIntensiveAddModal = ref(false);
+const intensiveAddModalDate = ref<Date | null>(null);
 
 async function loadCalendarData() {
   try {
@@ -442,6 +502,13 @@ async function loadCalendarLayoutForYear(year: number) {
 
 const showRemoveSubjectConfirm = ref(false);
 const subjectToRemove = ref<string | null>(null);
+
+const showIntensiveResetConfirm = ref(false);
+
+function onConfirmIntensiveReset() {
+  schedule.value = [];
+  showIntensiveResetConfirm.value = false;
+}
 
 function confirmRemoveSubject(name: string) {
   subjectToRemove.value = name;
@@ -596,6 +663,91 @@ function validateRtSlotUniqueness(): boolean {
   return true;
 }
 
+function onCalendarDayClick(date: Date) {
+  if (!isIntensiveEmptyState.value) return;
+  const range = intensiveEmptyDisplayRange.value;
+  if (!range) return;
+  const dateStr = formatDateShort(date);
+  if (dateStr < range.start || dateStr > range.end) {
+    const [ys, ms, ds] = range.start.split("-");
+    const [ye, me, de] = range.end.split("-");
+    showNotification(
+      `現在の学期範囲内の日付を選択してください（${ys}/${ms}/${ds}～${ye}/${me}/${de}）`,
+      "warning",
+      4000,
+    );
+    return;
+  }
+  intensiveAddModalDate.value = date;
+  showIntensiveAddModal.value = true;
+}
+
+const intensiveAddModalExistingOnDate = computed(() => {
+  const d = intensiveAddModalDate.value;
+  if (!d) return [];
+  const str = formatDateShort(d);
+  return schedule.value.filter((i) => formatDateShort(i.date) === str);
+});
+
+function onIntensiveAddConfirm(payloads: {
+  deliveryMode: DeliveryMode;
+  period?: number;
+}[]) {
+  const d = intensiveAddModalDate.value;
+  if (!d) return;
+  const dateStr = formatDateShort(d);
+  const rest = schedule.value.filter((i) => formatDateShort(i.date) !== dateStr);
+  const classCount = rest.filter((i) => !i.isHoliday).length;
+  const newItems: ScheduleItem[] = payloads.map((payload, i) => {
+    const item: ScheduleItem = {
+      date: new Date(d.getTime()),
+      dateStr: formatDate(d),
+      dayOfWeek: DAY_NAMES_FULL[d.getDay()] ?? "不明",
+      classNumber: classCount + i + 1,
+      isHoliday: false,
+      deliveryMode: payload.deliveryMode,
+    };
+    if (
+      payload.deliveryMode === "face-to-face" ||
+      payload.deliveryMode === "online"
+    ) {
+      const p = payload.period ?? 1;
+      item.period = p as 1 | 2 | 3 | 4 | 5 | 6 | 7;
+    }
+    return item;
+  });
+  schedule.value = [...rest, ...newItems].sort(
+    (a, b) => a.date.getTime() - b.date.getTime(),
+  );
+  let n = 0;
+  for (const item of schedule.value) {
+    if (!item.isHoliday) {
+      n++;
+      item.classNumber = n;
+    }
+  }
+  showIntensiveAddModal.value = false;
+  intensiveAddModalDate.value = null;
+}
+
+function onIntensiveAddDeleteAll() {
+  const d = intensiveAddModalDate.value;
+  if (!d) return;
+  const dateStr = formatDateShort(d);
+  schedule.value = schedule.value
+    .filter((i) => formatDateShort(i.date) !== dateStr)
+    .slice();
+  let n = 0;
+  for (const item of schedule.value) {
+    if (!item.isHoliday) {
+      n++;
+      item.classNumber = n;
+    }
+  }
+  showIntensiveAddModal.value = false;
+  intensiveAddModalDate.value = null;
+}
+
 function generateSchedule() {
   if (!currentYearData.value) {
     showNotification("学年暦データの読み込みに失敗しました。", "error");
@@ -605,7 +757,6 @@ function generateSchedule() {
   if (isIntensiveSemester.value) {
     schedule.value = [];
     isIntensiveEmptyState.value = true;
-    intensiveRemaining.value = settingsStore.currentSubjectSettings.courseDays;
     const period = semesterPeriod.value;
     intensiveEmptyDisplayRange.value =
       period != null ? { start: period.start, end: period.end } : null;

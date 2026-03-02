@@ -29,6 +29,7 @@
                   highlighted: showMarkers && day.isHighlighted,
                 },
                 { holiday: showMarkers && day.isHoliday },
+                { 'day-clickable': enableDayClick && day.day > 0 },
               ]"
               :title="
                 day.dayDisplayInfo
@@ -42,6 +43,11 @@
                             : '対面'
                       }`
                   : ''
+              "
+              @click="
+                enableDayClick && day.day > 0
+                  ? emit('day-click', dayClickDate(month, day))
+                  : undefined
               "
             >
               <div v-if="day.day > 0" class="day-content">
@@ -113,12 +119,25 @@ const props = withDefaults(
     showMarkers?: boolean;
     /** スケジュールが空のとき表示する期間（集中授業モードでカレンダーを表示する用） */
     emptyDisplayRange?: { start: string; end: string } | null;
+    /** 集中授業モードで日付クリックを有効にする */
+    enableDayClick?: boolean;
   }>(),
-  { twoColumns: true, showMarkers: true, emptyDisplayRange: null },
+  { twoColumns: true, showMarkers: true, emptyDisplayRange: null, enableDayClick: false },
 );
+
+const emit = defineEmits<{
+  (e: "day-click", date: Date): void;
+}>();
 
 // 曜日のラベル（日曜日から土曜日）
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+
+function dayClickDate(
+  month: { year: number; month: number },
+  day: { day: number },
+): Date {
+  return new Date(month.year, month.month - 1, day.day);
+}
 
 function getDayDisplayInfo(items: ScheduleItem[] | undefined) {
   if (!items?.length) return null;
@@ -422,10 +441,19 @@ const reorderedMonths = computed(() => {
   width: 20px;
   height: auto;
   min-height: 50px;
+}
+
+.calendar-day.day-clickable {
+  cursor: pointer;
   margin: 0 auto;
   box-sizing: border-box;
   min-width: 0;
   overflow: hidden;
+}
+
+.calendar-day.day-clickable:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
 
 .day-content {

@@ -39,6 +39,10 @@
                           showMarkers && day.isHighlighted && !day.isHoliday,
                       },
                       { holiday: showMarkers && day.isHoliday },
+                      {
+                        'day-clickable':
+                          enableDayClick && day.day > 0,
+                      },
                     ]"
                     :title="
                       day.dayDisplayInfo
@@ -46,6 +50,11 @@
                           ? `（休講）${day.dayDisplayInfo.reason ?? ''}`
                           : `第${day.dayDisplayInfo.classNumberDisplay}回`
                         : ''
+                    "
+                    @click="
+                      enableDayClick && day.day > 0
+                        ? emit('day-click', dayClickDate(month, day))
+                        : undefined
                     "
                   >
                     <template v-if="day.day > 0">
@@ -103,9 +112,15 @@ const props = withDefaults(
     showMarkers?: boolean;
     /** スケジュールが空のとき表示する期間（集中授業モードでカレンダーを表示する用） */
     emptyDisplayRange?: { start: string; end: string } | null;
+    /** 集中授業モードで日付クリックを有効にする */
+    enableDayClick?: boolean;
   }>(),
-  { twoColumns: true, showMarkers: true, emptyDisplayRange: null },
+  { twoColumns: true, showMarkers: true, emptyDisplayRange: null, enableDayClick: false },
 );
+
+const emit = defineEmits<{
+  (e: "day-click", date: Date): void;
+}>();
 
 const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -266,6 +281,7 @@ function getMonthLayout(month: number): MonthLayout | undefined {
 }
 
 function visibleDays(month: {
+  year: number;
   month: number;
   days: Array<{
     day: number;
@@ -280,6 +296,13 @@ function visibleDays(month: {
   const rowCount = ml?.rowCount ?? 5;
   const n = 7 * rowCount;
   return month.days.slice(0, n);
+}
+
+function dayClickDate(
+  month: { year: number; month: number },
+  day: { day: number },
+): Date {
+  return new Date(month.year, month.month - 1, day.day);
 }
 
 const baseUrl = import.meta.env.BASE_URL || "/";
@@ -468,6 +491,14 @@ function gridInnerStyle(month: number) {
 }
 .official-day-cell.highlighted .official-day-num {
   font-weight: bold;
+}
+.official-day-cell.day-clickable {
+  cursor: pointer;
+}
+
+.official-day-cell.day-clickable:hover {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
 }
 .official-month-placeholder {
   border: 1px dashed #ccc;
