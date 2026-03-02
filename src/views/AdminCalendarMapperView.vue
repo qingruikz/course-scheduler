@@ -252,23 +252,94 @@
             </div>
           </div>
           <div class="editor-row">
-          <label
-            >行数
-            <select
-              v-model.number="selectedMonthLayout.rowCount"
-              class="form-control"
+            <label
+              >行数
+              <select
+                v-model.number="selectedMonthLayout.rowCount"
+                class="form-control"
+              >
+                <option :value="4">4</option>
+                <option :value="5">5</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              class="btn btn-danger btn-sm"
+              @click="selectedMonthKey && removeMonth(selectedMonthKey)"
             >
-              <option :value="4">4</option>
-              <option :value="5">5</option>
-            </select>
-          </label>
-          <button
-            type="button"
-            class="btn btn-danger btn-sm"
-            @click="selectedMonthKey && removeMonth(selectedMonthKey)"
-          >
-            この月を削除
-          </button>
+              この月を削除
+            </button>
+          </div>
+          <div class="editor-row">
+            <h4>日付グリッド（学年暦背景で各セルの日付を決める）</h4>
+            <div class="offset-inputs">
+              <label
+                >月初行の空白セル数（0–6）
+                <input
+                  type="number"
+                  min="0"
+                  max="6"
+                  class="form-control num-input"
+                  :value="
+                    (selectedMonthLayout &&
+                      selectedMonthLayout.leadingBlanks) ??
+                    0
+                  "
+                  @input="
+                    (e: Event) => {
+                      const ml = selectedMonthLayout;
+                      if (ml)
+                        ml.leadingBlanks = (
+                          e.target as HTMLInputElement
+                        ).valueAsNumber;
+                    }
+                  "
+                />
+              </label>
+              <label class="label-with-hint">
+                最初の日付
+                <input
+                  type="date"
+                  class="form-control"
+                  :value="
+                    (selectedMonthLayout &&
+                      selectedMonthLayout.firstCellDate) ??
+                    defaultFirstCellDateForSelectedMonth
+                  "
+                  @input="
+                    (e: Event) => {
+                      const ml = selectedMonthLayout;
+                      if (ml)
+                        ml.firstCellDate =
+                          (e.target as HTMLInputElement).value || undefined;
+                    }
+                  "
+                />
+              </label>
+              <label>
+                月末行の空白セル数（0–6）
+                <input
+                  type="number"
+                  min="0"
+                  max="6"
+                  class="form-control num-input"
+                  :value="
+                    (selectedMonthLayout &&
+                      selectedMonthLayout.trailingBlanks) ??
+                    0
+                  "
+                  @input="
+                    (e: Event) => {
+                      const ml = selectedMonthLayout;
+                      if (ml)
+                        ml.trailingBlanks = (
+                          e.target as HTMLInputElement
+                        ).valueAsNumber;
+                    }
+                  "
+                />
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -496,6 +567,9 @@ function onCanvasMouseUp() {
     paddingRight: 0,
   };
   const box: MonthBox = { x, y, width, height };
+  const yearForMonth = monthNum >= 4 ? layoutYear.value : layoutYear.value + 1;
+  const firstDay = new Date(yearForMonth, monthNum - 1, 1);
+  const firstCellDate = `${yearForMonth}-${String(monthNum).padStart(2, "0")}-01`;
   layoutMonths.value = {
     ...layoutMonths.value,
     [key]: {
@@ -503,6 +577,9 @@ function onCanvasMouseUp() {
       rowCount: 5,
       monthBox: box,
       gridOffset: g,
+      leadingBlanks: firstDay.getDay(),
+      firstCellDate,
+      trailingBlanks: 0,
     },
   };
   selectedMonthKey.value = key;
@@ -525,6 +602,16 @@ function removeMonth(key: string) {
 const selectedMonthLayout = computed(() =>
   selectedMonthKey.value ? layoutMonths.value[selectedMonthKey.value] : null,
 );
+
+/** 選択中の月の「最初の日付」の既定値（当年度当月1日。1–3月は翌年） */
+const defaultFirstCellDateForSelectedMonth = computed(() => {
+  const key = selectedMonthKey.value;
+  if (!key) return "";
+  const monthNum = parseInt(key, 10);
+  if (monthNum < 1 || monthNum > 12) return "";
+  const year = monthNum >= 4 ? layoutYear.value : layoutYear.value + 1;
+  return `${year}-${String(monthNum).padStart(2, "0")}-01`;
+});
 
 // グリッドプレビューの canvas 上でのピクセル位置（canvas と同じ座標系）
 const gridPreviewStyle = computed(() => {
@@ -578,6 +665,71 @@ function exportJson() {
   URL.revokeObjectURL(link.href);
 }
 
+const DEFAULT_GRID_OFFSET: GridOffset = {
+  paddingTop: 0,
+  paddingBottom: 0,
+  paddingLeft: 0.09,
+  paddingRight: 0,
+};
+
+/** インポートした月設定の欠けている項目を既定値で補う */
+function normalizeMonthLayout(
+  layoutYear: number,
+  key: string,
+  raw: Record<string, unknown>,
+  defaultImageId: string,
+): MonthLayout {
+  const monthNum = parseInt(key, 10);
+  const yearForMonth = monthNum >= 4 ? layoutYear : layoutYear + 1;
+  const firstDay = new Date(yearForMonth, monthNum - 1, 1);
+  const defaultFirstCellDate = `${yearForMonth}-${String(monthNum).padStart(2, "0")}-01`;
+
+  const monthBox = raw.monthBox as MonthBox | undefined;
+  const gridOffset = raw.gridOffset as Partial<GridOffset> | undefined;
+  const ml: MonthLayout = {
+    imageId: (raw.imageId as string) ?? defaultImageId,
+    rowCount: raw.rowCount === 4 || raw.rowCount === 5 ? raw.rowCount : 5,
+    monthBox: monthBox
+      ? {
+          x: Number(monthBox.x) ?? 0,
+          y: Number(monthBox.y) ?? 0,
+          width: Number(monthBox.width) ?? 0.3,
+          height: Number(monthBox.height) ?? 0.1,
+        }
+      : { x: 0, y: 0, width: 0.3, height: 0.1 },
+    gridOffset: {
+      paddingTop: gridOffset?.paddingTop ?? DEFAULT_GRID_OFFSET.paddingTop,
+      paddingBottom:
+        gridOffset?.paddingBottom ?? DEFAULT_GRID_OFFSET.paddingBottom,
+      paddingLeft: gridOffset?.paddingLeft ?? DEFAULT_GRID_OFFSET.paddingLeft,
+      paddingRight:
+        gridOffset?.paddingRight ?? DEFAULT_GRID_OFFSET.paddingRight,
+    },
+    leadingBlanks: (() => {
+      const n = Number(raw.leadingBlanks);
+      return raw.leadingBlanks != null && Number.isFinite(n) && n >= 0 && n <= 6
+        ? n
+        : firstDay.getDay();
+    })(),
+    firstCellDate:
+      raw.firstCellDate &&
+      typeof raw.firstCellDate === "string" &&
+      !Number.isNaN(new Date(raw.firstCellDate).getTime())
+        ? raw.firstCellDate
+        : defaultFirstCellDate,
+    trailingBlanks: (() => {
+      const n = Number(raw.trailingBlanks);
+      return raw.trailingBlanks != null &&
+        Number.isFinite(n) &&
+        n >= 0 &&
+        n <= 6
+        ? n
+        : 0;
+    })(),
+  };
+  return ml;
+}
+
 function onImportJson(e: Event) {
   const input = e.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -587,11 +739,24 @@ function onImportJson(e: Event) {
     try {
       const layout = JSON.parse(reader.result as string) as CalendarLayout;
       layoutYear.value = layout.year;
-      layoutMonths.value = { ...layout.months };
+      const defaultImageId = Object.keys(layout.images)[0] ?? "page1";
+      const normalized: Record<string, MonthLayout> = {};
+      for (const key of Object.keys(layout.months || {})) {
+        const raw = layout.months[key] as Record<string, unknown> | undefined;
+        if (raw) {
+          normalized[key] = normalizeMonthLayout(
+            layout.year,
+            key,
+            raw,
+            defaultImageId,
+          );
+        }
+      }
+      layoutMonths.value = normalized;
       imageIdToPath.value = { ...layout.images };
       const firstId = Object.keys(layout.images)[0];
       if (firstId) currentImageId.value = firstId;
-      selectedMonthKey.value = Object.keys(layout.months)[0] ?? null;
+      selectedMonthKey.value = Object.keys(layoutMonths.value)[0] ?? null;
       // 画像は読み込まない。配置のみ復元。画像は別途 PNG でアップロードする。
     } catch (err) {
       console.error(err);
@@ -775,12 +940,12 @@ function onImportJson(e: Event) {
 .grid-offset-editor {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px;
 }
 .grid-offset-editor .editor-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 2px;
   align-items: center;
 }
 .offset-inputs {

@@ -216,6 +216,12 @@ export interface MonthLayout {
   rowCount: 4 | 5;
   monthBox: MonthBox;
   gridOffset: GridOffset;
+  /** 月初行の先頭にある空白セル数（0–6）。学年暦背景で日付を決める用。未指定時は firstDayOfWeek で算出。 */
+  leadingBlanks?: number;
+  /** 最初の非空白セルが表す日付（YYYY-MM-DD）。上月末日等も可。未指定時は firstDayOfWeek で算出。 */
+  firstCellDate?: string;
+  /** 月末行の末尾にある空白セル数（0–6）。既定 0。 */
+  trailingBlanks?: number;
 }
 
 export interface CalendarLayout {

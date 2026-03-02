@@ -236,13 +236,13 @@ const displayedMonths = computed(() => {
   let minDate: Date;
   let maxDate: Date;
 
-  if (props.schedule.length > 0) {
+  if (props.emptyDisplayRange?.start && props.emptyDisplayRange?.end) {
+    minDate = new Date(props.emptyDisplayRange.start);
+    maxDate = new Date(props.emptyDisplayRange.end);
+  } else if (props.schedule.length > 0) {
     const dates = props.schedule.map((item) => item.date);
     minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
     maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
-  } else if (props.emptyDisplayRange?.start && props.emptyDisplayRange?.end) {
-    minDate = new Date(props.emptyDisplayRange.start);
-    maxDate = new Date(props.emptyDisplayRange.end);
   } else {
     return [];
   }

@@ -40,8 +40,7 @@
                       },
                       { holiday: showMarkers && day.isHoliday },
                       {
-                        'day-clickable':
-                          enableDayClick && day.day > 0,
+                        'day-clickable': enableDayClick && day.day > 0,
                       },
                     ]"
                     :title="
@@ -58,7 +57,9 @@
                     "
                   >
                     <template v-if="day.day > 0">
-                      <span class="official-day-num">{{ day.day }}</span>
+                      <span class="official-day-date">{{
+                        formatDayDate(day, month)
+                      }}</span>
                       <div
                         v-if="showMarkers && day.dayDisplayInfo"
                         class="official-day-marker"
@@ -115,7 +116,12 @@ const props = withDefaults(
     /** 集中授業モードで日付クリックを有効にする */
     enableDayClick?: boolean;
   }>(),
-  { twoColumns: true, showMarkers: true, emptyDisplayRange: null, enableDayClick: false },
+  {
+    twoColumns: true,
+    showMarkers: true,
+    emptyDisplayRange: null,
+    enableDayClick: false,
+  },
 );
 
 const emit = defineEmits<{
@@ -175,13 +181,13 @@ const displayedMonths = computed(() => {
   let minDate: Date;
   let maxDate: Date;
 
-  if (props.schedule.length > 0) {
+  if (props.emptyDisplayRange?.start && props.emptyDisplayRange?.end) {
+    minDate = new Date(props.emptyDisplayRange.start);
+    maxDate = new Date(props.emptyDisplayRange.end);
+  } else if (props.schedule.length > 0) {
     const dates = props.schedule.map((item) => item.date);
     minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
     maxDate = new Date(Math.max(...dates.map((d) => d.getTime())));
-  } else if (props.emptyDisplayRange?.start && props.emptyDisplayRange?.end) {
-    minDate = new Date(props.emptyDisplayRange.start);
-    maxDate = new Date(props.emptyDisplayRange.end);
   } else {
     return [];
   }
@@ -195,18 +201,20 @@ const displayedMonths = computed(() => {
     endMonth = 0;
     endYear += 1;
   }
+  type DayCell = {
+    day: number;
+    dateStr?: string;
+    isHighlighted: boolean;
+    isHoliday: boolean;
+    holidayReason?: string;
+    scheduleInfo?: ScheduleItem[];
+    dayDisplayInfo?: ReturnType<typeof getDayDisplayInfo>;
+  };
   const months: Array<{
     key: string;
     year: number;
     month: number;
-    days: Array<{
-      day: number;
-      isHighlighted: boolean;
-      isHoliday: boolean;
-      holidayReason?: string;
-      scheduleInfo?: ScheduleItem[];
-      dayDisplayInfo?: ReturnType<typeof getDayDisplayInfo>;
-    }>;
+    days: DayCell[];
   }> = [];
   let currentYear = minDate.getFullYear();
   let currentMonth = minDate.getMonth();
@@ -217,36 +225,65 @@ const displayedMonths = computed(() => {
   ) {
     const year = currentYear;
     const month = currentMonth;
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const firstDayOfWeek = firstDay.getDay();
-    const days: Array<{
-      day: number;
-      isHighlighted: boolean;
-      isHoliday: boolean;
-      holidayReason?: string;
-      scheduleInfo?: ScheduleItem[];
-      dayDisplayInfo?: ReturnType<typeof getDayDisplayInfo>;
-    }> = [];
+    const ml = props.layout?.months[String(month + 1)];
+    const days: DayCell[] = [];
 
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      days.push({ day: 0, isHighlighted: false, isHoliday: false });
-    }
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      const date = new Date(year, month, day);
-      const dateStr = formatDateShort(date);
-      const isHoliday = holidayDates.value.has(dateStr);
-      const items = scheduleInfo.value.get(dateStr);
-      days.push({
-        day,
-        isHighlighted: highlightedDates.value.has(dateStr),
-        isHoliday,
-        holidayReason: isHoliday
-          ? holidayReasons.value.get(dateStr)
-          : undefined,
-        scheduleInfo: items,
-        dayDisplayInfo: getDayDisplayInfo(items),
-      });
+    if (
+      ml &&
+      ml.leadingBlanks != null &&
+      ml.firstCellDate &&
+      !Number.isNaN(new Date(ml.firstCellDate).getTime())
+    ) {
+      const totalCells = 7 * (ml.rowCount ?? 5);
+      const leadingBlanks = Math.max(0, Math.min(6, ml.leadingBlanks));
+      const trailingBlanks = Math.max(0, Math.min(6, ml.trailingBlanks ?? 0));
+      const firstDate = new Date(ml.firstCellDate);
+      for (let i = 0; i < totalCells; i++) {
+        if (i < leadingBlanks || i >= totalCells - trailingBlanks) {
+          days.push({ day: 0, isHighlighted: false, isHoliday: false });
+        } else {
+          const d = new Date(firstDate);
+          d.setDate(d.getDate() + (i - leadingBlanks));
+          const dateStr = formatDateShort(d);
+          const isHoliday = holidayDates.value.has(dateStr);
+          const items = scheduleInfo.value.get(dateStr);
+          days.push({
+            day: d.getDate(),
+            dateStr,
+            isHighlighted: highlightedDates.value.has(dateStr),
+            isHoliday,
+            holidayReason: isHoliday
+              ? holidayReasons.value.get(dateStr)
+              : undefined,
+            scheduleInfo: items,
+            dayDisplayInfo: getDayDisplayInfo(items),
+          });
+        }
+      }
+    } else {
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const firstDayOfWeek = firstDay.getDay();
+      for (let i = 0; i < firstDayOfWeek; i++) {
+        days.push({ day: 0, isHighlighted: false, isHoliday: false });
+      }
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const date = new Date(year, month, day);
+        const dateStr = formatDateShort(date);
+        const isHoliday = holidayDates.value.has(dateStr);
+        const items = scheduleInfo.value.get(dateStr);
+        days.push({
+          day,
+          dateStr,
+          isHighlighted: highlightedDates.value.has(dateStr),
+          isHoliday,
+          holidayReason: isHoliday
+            ? holidayReasons.value.get(dateStr)
+            : undefined,
+          scheduleInfo: items,
+          dayDisplayInfo: getDayDisplayInfo(items),
+        });
+      }
     }
     months.push({
       key: `${year}-${month}`,
@@ -261,6 +298,41 @@ const displayedMonths = computed(() => {
       currentMonth++;
     }
   }
+
+  // 学年暦背景時：表示範囲内でいずれの格子にも割り当てられていない日付があればコンソールに報錯
+  if (props.layout?.year != null && months.length > 0) {
+    const assignedDateStrs = new Set<string>();
+    for (const m of months) {
+      for (const cell of m.days) {
+        if (cell.dateStr) assignedDateStrs.add(cell.dateStr);
+      }
+    }
+    const last = months[months.length - 1]!;
+    const lastDayOfMonth = new Date(last.year, last.month, 0).getDate();
+    const rangeEnd = new Date(last.year, last.month - 1, lastDayOfMonth);
+    const rangeStart = new Date(
+      minDate.getFullYear(),
+      minDate.getMonth(),
+      minDate.getDate(),
+    );
+    const missing: string[] = [];
+    const d = new Date(rangeStart);
+    while (d <= rangeEnd) {
+      const dateStr = formatDateShort(new Date(d.getTime()));
+      if (!assignedDateStrs.has(dateStr)) missing.push(dateStr);
+      d.setDate(d.getDate() + 1);
+    }
+    if (missing.length > 0) {
+      console.error(
+        "[学年暦背景] 表示範囲内に日付が割り当てられていないセルがあります:",
+        missing.length,
+        "日分",
+        missing.slice(0, 20),
+        missing.length > 20 ? `… 他 ${missing.length - 20} 日` : "",
+      );
+    }
+  }
+
   return months;
 });
 
@@ -300,9 +372,22 @@ function visibleDays(month: {
 
 function dayClickDate(
   month: { year: number; month: number },
-  day: { day: number },
+  day: { day: number; dateStr?: string },
 ): Date {
+  if (day.dateStr) return new Date(day.dateStr);
   return new Date(month.year, month.month - 1, day.day);
+}
+
+/** セル表示用：YYYY/M/D 形式（例: 2026/4/29） */
+function formatDayDate(
+  day: { day: number; dateStr?: string },
+  month: { year: number; month: number },
+): string {
+  if (day.dateStr) {
+    const [y, m, d] = day.dateStr.split("-").map(Number);
+    return `${y}/${m}/${d}`;
+  }
+  return `${month.year}/${month.month}/${day.day}`;
 }
 
 const baseUrl = import.meta.env.BASE_URL || "/";
@@ -445,8 +530,8 @@ function gridInnerStyle(month: number) {
   min-width: 0;
   overflow: hidden;
 }
-/* 背景画像に日付ありのため数字は非表示。格子は透明で授業ハイライトを重ねやすくする */
-.official-day-num {
+/* 背景画像に日付ありのため日付文字は非表示。格子は透明で授業ハイライトを重ねやすくする */
+.official-day-date {
   visibility: hidden;
   font-weight: 500;
 }
@@ -486,10 +571,10 @@ function gridInnerStyle(month: number) {
 .official-day-marker.marker-holiday {
   background: rgba(204, 0, 0, 0.35);
 }
-.official-day-cell.holiday .official-day-num {
+.official-day-cell.holiday .official-day-date {
   color: #c62828;
 }
-.official-day-cell.highlighted .official-day-num {
+.official-day-cell.highlighted .official-day-date {
   font-weight: bold;
 }
 .official-day-cell.day-clickable {
