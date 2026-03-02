@@ -1,7 +1,7 @@
 <template>
   <header class="header">
     <div class="header-right-buttons">
-      <div class="dropdown">
+      <div ref="dropdownRef" class="dropdown">
         <button
           type="button"
           class="calendar-icon-button-header admin-icon-button-header"
@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch, onUnmounted } from "vue";
 import { formatAcademicYear } from "../utils/japaneseEra";
 
 defineProps<{
@@ -62,6 +62,26 @@ const emit = defineEmits<{
 }>();
 
 const showAdminMenu = ref(false);
+const dropdownRef = ref<HTMLElement | null>(null);
+
+function onDocumentClick(e: MouseEvent) {
+  const el = dropdownRef.value;
+  if (el && !el.contains(e.target as Node)) {
+    showAdminMenu.value = false;
+  }
+}
+
+watch(showAdminMenu, (open) => {
+  if (open) {
+    setTimeout(() => document.addEventListener("click", onDocumentClick), 0);
+  } else {
+    document.removeEventListener("click", onDocumentClick);
+  }
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", onDocumentClick);
+});
 </script>
 
 <style scoped>
