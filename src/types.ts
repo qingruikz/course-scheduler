@@ -83,11 +83,15 @@ export interface ClassSlot {
 /** ICS 出力用: 1つの曜日スロット（時限 or カスタム時間 + 教室） */
 export interface IcsSlot {
   dayOfWeek: DayOfWeek;
-  /** 1～7 の時限。null の場合は customStart/customEnd を使用 */
+  /** 1～7 の時限。null の場合は customStart/customEnd を使用（RT のカスタム or OD の配信時間カスタム） */
   period: 1 | 2 | 3 | 4 | 5 | 6 | 7 | null;
   customStart?: string; // "HH:mm"
   customEnd?: string; // "HH:mm"
   room: string;
+  /** OD のみ: このスロットの配信日をカレンダーに追加するか（既定 true） */
+  addToCalendar?: boolean;
+  /** OD のみ: true = 終日イベント、false = カスタム時間（既定 true） */
+  odAllDay?: boolean;
 }
 
 /** ICS 出力用: モーダルで入力するオプション */
@@ -98,6 +102,8 @@ export interface IcsExportOptions {
   reminder1Minutes: number;
   /** 2回目のリマインド（分）。null は「なし」 */
   reminder2Minutes?: number | null;
+  /** 説明（講義情報）の後に追記するメモ。空でない場合のみ DESCRIPTION に改行2つ挟んで追加 */
+  customMemo?: string;
 }
 
 /** 学年暦 ICS 出力用オプション */
@@ -105,6 +111,8 @@ export interface CalendarEventsIcsOptions {
   includeTypes: CalendarEventType[];
   classesHeldFilter: "false" | "both";
   reminderMinutes?: number;
+  /** 各イベントの DESCRIPTION に追記するメモ。空でない場合のみ追加 */
+  customMemo?: string;
 }
 
 /** 1科目分の条件設定 + 課程 ICS 出力用オプション */

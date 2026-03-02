@@ -3,6 +3,7 @@ import type {
   ScheduleItem,
   IcsExportOptions,
   IcsSlot,
+  ClassSlot,
   SemesterOption,
   DayOfWeek,
   CalendarEvent,
@@ -223,17 +224,22 @@ export function buildScheduleIcsBlob(
   schedule: ScheduleItem[],
   options: IcsExportOptions,
   semester: SemesterOption,
+  classSlots?: ClassSlot[],
 ): Blob {
   const classItems = schedule.filter((item) => !item.isHoliday);
   const slots = options.slots;
   const locationLine = slots.map(slotLocationPart).join(", ");
   const timeLimitLine = slots.map(slotTimeLabel).join("+");
-  const descriptionBody = [
+  const courseInfoLines = [
     "【講義情報】",
     `科目名　　：${options.subjectName}`,
     `曜日・時限：${semester}${timeLimitLine}`,
     `教室　　　：${locationLine}`,
-  ].join("\n");
+  ];
+  const customMemo = options.customMemo?.trim();
+  const descriptionBody = customMemo
+    ? courseInfoLines.join("\n") + "\n\n" + customMemo
+    : courseInfoLines.join("\n");
 
   const holidayItems = schedule.filter((item) => item.isHoliday);
 
@@ -247,11 +253,22 @@ export function buildScheduleIcsBlob(
   for (let slotIndex = 0; slotIndex < slots.length; slotIndex++) {
     const slot = slots[slotIndex];
     if (!slot) continue;
+    const classSlot = classSlots?.[slotIndex];
+    const isOd = classSlot?.deliveryType === "on-demand";
+    if (isOd && slot.addToCalendar === false) continue;
+
     const dow = slot.dayOfWeek;
     const classDatesForSlot = classItems.filter(
       (item) => (item.date.getDay() as DayOfWeek) === dow,
     );
     if (classDatesForSlot.length === 0) continue;
+
+    const reminders = [
+      options.reminder1Minutes,
+      options.reminder2Minutes != null && options.reminder2Minutes !== undefined
+        ? options.reminder2Minutes
+        : null,
+    ].filter((m): m is number => typeof m === "number");
 
     const firstDate = classDatesForSlot[0]!.date;
     const lastDate = classDatesForSlot[classDatesForSlot.length - 1]!.date;
@@ -282,12 +299,6 @@ export function buildScheduleIcsBlob(
     const descFolded = formatDescriptionFolded(descriptionBody);
     lines.push(...descFolded.split("\r\n"));
 
-    const reminders = [
-      options.reminder1Minutes,
-      options.reminder2Minutes != null && options.reminder2Minutes !== undefined
-        ? options.reminder2Minutes
-        : null,
-    ].filter((m): m is number => typeof m === "number");
     for (const min of reminders) {
       lines.push("BEGIN:VALARM");
       lines.push("ACTION:DISPLAY");
@@ -372,6 +383,11 @@ export function buildCalendarIcsBlob(
     "CALSCALE:GREGORIAN",
   ];
 
+  const customMemo = options.customMemo?.trim();
+  const descriptionFolded = customMemo
+    ? formatDescriptionFolded(customMemo)
+    : null;
+
   let uidIndex = 0;
   for (const ev of filtered) {
     if (ev.start != null && ev.end != null) {
@@ -383,6 +399,9 @@ export function buildCalendarIcsBlob(
       lines.push(`DTSTART;VALUE=DATE:${dtStart}`);
       lines.push(`DTEND;VALUE=DATE:${dtEnd}`);
       lines.push(`SUMMARY:${escapeIcsValue(ev.name)}`);
+      if (descriptionFolded) {
+        lines.push(...descriptionFolded.split("\r\n"));
+      }
       if (options.reminderMinutes != null && options.reminderMinutes > 0) {
         lines.push("BEGIN:VALARM");
         lines.push("ACTION:DISPLAY");
@@ -400,6 +419,9 @@ export function buildCalendarIcsBlob(
         lines.push(`DTSTART;VALUE=DATE:${dtStart}`);
         lines.push(`DTEND;VALUE=DATE:${dtEnd}`);
         lines.push(`SUMMARY:${escapeIcsValue(ev.name)}`);
+        if (descriptionFolded) {
+          lines.push(...descriptionFolded.split("\r\n"));
+        }
         if (options.reminderMinutes != null && options.reminderMinutes > 0) {
           lines.push("BEGIN:VALARM");
           lines.push("ACTION:DISPLAY");

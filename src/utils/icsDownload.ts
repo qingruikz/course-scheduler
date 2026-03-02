@@ -45,7 +45,8 @@ export function downloadIcsFromPayload(
     const blob = buildScheduleIcsBlob(
       schedule,
       p.icsExportOptions,
-      p.semester
+      p.semester,
+      p.classSlots,
     );
 
     const name = p.icsExportOptions.subjectName?.trim()
