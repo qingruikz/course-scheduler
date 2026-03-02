@@ -73,6 +73,17 @@
                   <span class="toggle-switch-slider"></span>
                 </label>
               </div>
+              <div class="calendar-switch-item">
+                <span class="switch-label">対象学期のみ</span>
+                <label class="toggle-switch">
+                  <input
+                    v-model="calendarLimitToSemester"
+                    type="checkbox"
+                    class="toggle-switch-input"
+                  />
+                  <span class="toggle-switch-slider"></span>
+                </label>
+              </div>
             </div>
             <CalendarView
               v-if="
@@ -87,6 +98,7 @@
                   ? intensiveEmptyDisplayRange
                   : null
               "
+              :limit-to-semester="calendarLimitToSemester"
               :enable-day-click="isIntensiveEmptyState"
               :two-columns="calendarTwoColumns"
               :show-markers="showCalendarMarkers"
@@ -107,6 +119,7 @@
                   ? intensiveEmptyDisplayRange
                   : null
               "
+              :limit-to-semester="calendarLimitToSemester"
               :enable-day-click="isIntensiveEmptyState"
               :two-columns="calendarTwoColumns"
               :show-markers="showCalendarMarkers"
@@ -292,6 +305,11 @@ const CALENDAR_MARKERS_KEY = "course-scheduler:showCalendarMarkers";
 const showCalendarMarkers = ref(
   localStorage.getItem(CALENDAR_MARKERS_KEY) !== "false",
 );
+const CALENDAR_LIMIT_TO_SEMESTER_KEY =
+  "course-scheduler:calendarLimitToSemester";
+const calendarLimitToSemester = ref(
+  localStorage.getItem(CALENDAR_LIMIT_TO_SEMESTER_KEY) !== "false",
+);
 const calendarLayout = ref<CalendarLayout | null>(null);
 const calendarTestImageUrl =
   (import.meta.env.BASE_URL || "/").replace(/\/?$/, "/") + "calendar_2026.png";
@@ -308,6 +326,12 @@ watch(
 watch(
   showCalendarMarkers,
   (v) => localStorage.setItem(CALENDAR_MARKERS_KEY, String(v)),
+  { immediate: true },
+);
+watch(
+  calendarLimitToSemester,
+  (v) =>
+    localStorage.setItem(CALENDAR_LIMIT_TO_SEMESTER_KEY, String(v)),
   { immediate: true },
 );
 

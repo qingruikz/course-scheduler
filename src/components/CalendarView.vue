@@ -119,10 +119,21 @@ const props = withDefaults(
     showMarkers?: boolean;
     /** スケジュールが空のとき表示する期間（集中授業モードでカレンダーを表示する用） */
     emptyDisplayRange?: { start: string; end: string } | null;
+    /** 対象学期のみ表示（false で当年度全体を表示） */
+    limitToSemester?: boolean;
+    /** 表示年度（学年）。limitToSemester が false のときに使用 */
+    year?: number;
     /** 集中授業モードで日付クリックを有効にする */
     enableDayClick?: boolean;
   }>(),
-  { twoColumns: true, showMarkers: true, emptyDisplayRange: null, enableDayClick: false },
+  {
+    twoColumns: true,
+    showMarkers: true,
+    emptyDisplayRange: null,
+    limitToSemester: true,
+    year: 0,
+    enableDayClick: false,
+  },
 );
 
 const emit = defineEmits<{
@@ -236,7 +247,10 @@ const displayedMonths = computed(() => {
   let minDate: Date;
   let maxDate: Date;
 
-  if (props.emptyDisplayRange?.start && props.emptyDisplayRange?.end) {
+  if (!props.limitToSemester && props.year > 0) {
+    minDate = new Date(props.year, 3, 1);
+    maxDate = new Date(props.year + 1, 2, 31);
+  } else if (props.emptyDisplayRange?.start && props.emptyDisplayRange?.end) {
     minDate = new Date(props.emptyDisplayRange.start);
     maxDate = new Date(props.emptyDisplayRange.end);
   } else if (props.schedule.length > 0) {
@@ -247,14 +261,15 @@ const displayedMonths = computed(() => {
     return [];
   }
 
-  // 学期より1ヶ月多く表示（確認用）
   let endYear = maxDate.getFullYear();
   let endMonth = maxDate.getMonth();
-  if (endMonth < 11) {
-    endMonth += 1;
-  } else {
-    endMonth = 0;
-    endYear += 1;
+  if (props.limitToSemester) {
+    if (endMonth < 11) {
+      endMonth += 1;
+    } else {
+      endMonth = 0;
+      endYear += 1;
+    }
   }
 
   // 生成する月データを格納する配列
