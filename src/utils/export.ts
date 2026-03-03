@@ -377,7 +377,10 @@ export function buildScheduleIcsBlob(
         lines.push(`EXDATE:${ex}`);
       }
       lines.push(`SUMMARY:${escapeIcsValue(summary)}`);
-      lines.push(`LOCATION:${escapeIcsValue(locationLine)}`);
+      // 複数スロットを "（月1）A, （木2）B" と結合しているため、LOCATION 内のカンマは RFC 5545 に従い \ でエスケープする（しないと一部アプリが「月1」のみ表示する）
+      lines.push(
+        `LOCATION:${escapeIcsValue(locationLine).replace(/,/g, "\\,")}`,
+      );
       const descFolded = formatDescriptionFolded(descriptionBody);
       lines.push(...descFolded.split("\r\n"));
 
