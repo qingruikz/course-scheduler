@@ -90,10 +90,14 @@ export interface IcsSlot {
   customStart?: string; // "HH:mm"
   customEnd?: string; // "HH:mm"
   room: string;
+  /** 実施方法。LOCATION の算出に使用（RT: 教室 or 空/オンライン、OD: オンデマンド） */
+  deliveryType?: DeliveryMode;
   /** OD のみ: このスロットの配信日をカレンダーに追加するか（既定 true） */
   addToCalendar?: boolean;
   /** OD のみ: true = 終日イベント、false = カスタム時間（既定 true） */
   odAllDay?: boolean;
+  /** 集中授業用: このスロットの日付（YYYY-MM-DD）。指定時は dayOfWeek の代わりにこの日付で1件のイベントを出力 */
+  dateStr?: string;
 }
 
 /** ICS 出力用: モーダルで入力するオプション */
@@ -104,6 +108,8 @@ export interface IcsExportOptions {
   reminder1Minutes: number;
   /** 2回目のリマインド（分）。null は「なし」 */
   reminder2Minutes?: number | null;
+  /** true のとき SUMMARY に実施形態を付与（例: 初年次ゼミ（対面））。未設定時はスロットの実施形態が全て同一なら false、混在なら true で初期化 */
+  addDeliveryToSummary?: boolean;
   /** 説明（講義情報）の後に追記するメモ。空でない場合のみ DESCRIPTION に改行2つ挟んで追加 */
   customMemo?: string;
 }

@@ -50,27 +50,208 @@
               </div>
               <div class="form-group">
                 <label
-                  >授業の時限・教室<span class="required-mark">*</span></label
+                  >{{
+                    isIntensiveSchedule
+                      ? "授業の日付・時限・教室"
+                      : "授業の時限・教室"
+                  }}<span class="required-mark">*</span></label
                 >
-                <div v-for="(slot, idx) in slots" :key="idx" class="slot-group">
-                  <label class="slot-label">{{
-                    dayNames[slot.dayOfWeek]
-                  }}</label>
-                  <!-- OD: このスロットの配信日をカレンダーに追加 -->
-                  <div v-if="isSlotOd(idx)" class="slot-od-add-switch">
-                    <span class="switch-label">配信日をカレンダーに追加</span>
-                    <label class="toggle-switch">
-                      <input
-                        v-model="slot.addToCalendar"
-                        type="checkbox"
-                        class="toggle-switch-input"
-                      />
-                      <span class="toggle-switch-slider"></span>
-                    </label>
+                <!-- 集中授業: 日付ごとにグループ表示 -->
+                <template v-if="isIntensiveSchedule">
+                  <div
+                    v-for="group in intensiveSlotGroups"
+                    :key="group.dateStr"
+                    class="intensive-date-area"
+                  >
+                    <label class="intensive-date-label">{{
+                      formatDateLabel(group.dateStr)
+                    }}</label>
+                    <div
+                      v-for="idx in group.indices"
+                      :key="idx"
+                      class="slot-group"
+                    >
+                      <div v-if="slots[idx]" class="slot-row">
+                        <template v-if="!isSlotOd(idx)">
+                          <div class="period-select-group">
+                            <label class="small-label">時限</label>
+                            <select
+                              v-model="slots[idx]!.period"
+                              class="form-control period-select"
+                              @change="onPeriodChange(slots[idx]!)"
+                            >
+                              <option
+                                v-for="p in PERIOD_TIMES"
+                                :key="p.period"
+                                :value="p.period"
+                              >
+                                {{ p.label }}
+                              </option>
+                              <option :value="null">カスタム</option>
+                            </select>
+                          </div>
+                          <template v-if="slots[idx]!.period === null">
+                            <div class="custom-time-group">
+                              <div class="time-input-group">
+                                <label class="small-label">開始</label>
+                                <input
+                                  v-model="slots[idx]!.customStart"
+                                  type="time"
+                                  class="form-control time-input"
+                                />
+                              </div>
+                              <div class="time-input-group">
+                                <label class="small-label">終了</label>
+                                <input
+                                  v-model="slots[idx]!.customEnd"
+                                  type="time"
+                                  class="form-control time-input"
+                                />
+                              </div>
+                            </div>
+                          </template>
+                          <div class="room-group">
+                            <label class="small-label">教室</label>
+                            <input
+                              v-model="slots[idx]!.room"
+                              type="text"
+                              class="form-control room-input"
+                              placeholder="例：有明4-301 / オンライン"
+                            />
+                          </div>
+                        </template>
+                        <template v-else>
+                          <div
+                            class="slot-od-add-switch slot-od-add-switch-intensive"
+                          >
+                            <span class="slot-od-add-switch-label"
+                              >配信日をカレンダーに追加</span
+                            >
+                            <label class="toggle-switch">
+                              <input
+                                v-model="slots[idx]!.addToCalendar"
+                                type="checkbox"
+                                class="toggle-switch-input"
+                              />
+                              <span class="toggle-switch-slider"></span>
+                            </label>
+                          </div>
+                          <div
+                            v-if="slots[idx]!.addToCalendar !== false"
+                            class="slot-row"
+                          >
+                            <div class="period-select-group">
+                              <label class="small-label">配信時間</label>
+                              <select
+                                v-model="slots[idx]!.period"
+                                class="form-control period-select"
+                                @change="onPeriodChange(slots[idx]!)"
+                              >
+                                <option
+                                  v-for="p in PERIOD_TIMES"
+                                  :key="p.period"
+                                  :value="p.period"
+                                >
+                                  {{ p.label }}
+                                </option>
+                                <option :value="null">カスタム</option>
+                              </select>
+                            </div>
+                            <template v-if="slots[idx]!.period === null">
+                              <div class="custom-time-group">
+                                <div class="time-input-group">
+                                  <label class="small-label">開始</label>
+                                  <input
+                                    v-model="slots[idx]!.customStart"
+                                    type="time"
+                                    class="form-control time-input"
+                                  />
+                                </div>
+                                <div class="time-input-group">
+                                  <label class="small-label">終了</label>
+                                  <input
+                                    v-model="slots[idx]!.customEnd"
+                                    type="time"
+                                    class="form-control time-input"
+                                  />
+                                </div>
+                              </div>
+                            </template>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
                   </div>
-                  <div class="slot-row">
-                    <!-- RT: 時限 -->
-                    <template v-if="!isSlotOd(idx)">
+                </template>
+                <!-- 通常: 曜日ごと -->
+                <template v-else>
+                  <div
+                    v-for="(slot, idx) in slots"
+                    :key="idx"
+                    class="slot-group"
+                  >
+                    <label class="slot-label">{{
+                      dayNames[slot.dayOfWeek]
+                    }}</label>
+                    <!-- OD: 配信日をカレンダーに追加 と 配信時間 を一行に -->
+                    <div v-if="isSlotOd(idx)" class="slot-od-one-row">
+                      <div
+                        class="slot-od-add-switch slot-od-add-switch-intensive"
+                      >
+                        <span class="slot-od-add-switch-label"
+                          >配信日をカレンダーに追加</span
+                        >
+                        <label class="toggle-switch">
+                          <input
+                            v-model="slot.addToCalendar"
+                            type="checkbox"
+                            class="toggle-switch-input"
+                          />
+                          <span class="toggle-switch-slider"></span>
+                        </label>
+                      </div>
+                      <template v-if="slot.addToCalendar !== false">
+                        <div class="period-select-group">
+                          <label class="small-label">配信時間</label>
+                          <select
+                            v-model="slot.period"
+                            class="form-control period-select"
+                            @change="onPeriodChange(slot)"
+                          >
+                            <option
+                              v-for="p in PERIOD_TIMES"
+                              :key="p.period"
+                              :value="p.period"
+                            >
+                              {{ p.label }}
+                            </option>
+                            <option :value="null">カスタム</option>
+                          </select>
+                        </div>
+                        <template v-if="slot.period === null">
+                          <div class="custom-time-group">
+                            <div class="time-input-group">
+                              <label class="small-label">開始</label>
+                              <input
+                                v-model="slot.customStart"
+                                type="time"
+                                class="form-control time-input"
+                              />
+                            </div>
+                            <div class="time-input-group">
+                              <label class="small-label">終了</label>
+                              <input
+                                v-model="slot.customEnd"
+                                type="time"
+                                class="form-control time-input"
+                              />
+                            </div>
+                          </div>
+                        </template>
+                      </template>
+                    </div>
+                    <div v-if="!isSlotOd(idx)" class="slot-row">
+                      <!-- RT: 時限 -->
                       <div class="period-select-group">
                         <label class="small-label">時限</label>
                         <select
@@ -108,105 +289,95 @@
                           </div>
                         </div>
                       </template>
-                    </template>
-                    <!-- OD: 配信時間（RT と同様 1～7限 + カスタム）。追加する場合のみ表示 -->
-                    <template v-else-if="slot.addToCalendar !== false">
-                      <div class="period-select-group">
-                        <label class="small-label">配信時間</label>
-                        <select
-                          v-model="slot.period"
-                          class="form-control period-select"
-                          @change="onPeriodChange(slot)"
-                        >
-                          <option
-                            v-for="p in PERIOD_TIMES"
-                            :key="p.period"
-                            :value="p.period"
-                          >
-                            {{ p.label }}
-                          </option>
-                          <option :value="null">カスタム</option>
-                        </select>
+                      <div class="room-group">
+                        <label class="small-label">教室</label>
+                        <input
+                          v-model="slot.room"
+                          type="text"
+                          class="form-control room-input"
+                          placeholder="例：有明4-301 / オンライン"
+                        />
                       </div>
-                      <template v-if="slot.period === null">
-                        <div class="custom-time-group">
-                          <div class="time-input-group">
-                            <label class="small-label">開始</label>
-                            <input
-                              v-model="slot.customStart"
-                              type="time"
-                              class="form-control time-input"
-                            />
-                          </div>
-                          <div class="time-input-group">
-                            <label class="small-label">終了</label>
-                            <input
-                              v-model="slot.customEnd"
-                              type="time"
-                              class="form-control time-input"
-                            />
-                          </div>
-                        </div>
-                      </template>
-                    </template>
-                    <div v-if="!isSlotOd(idx)" class="room-group">
-                      <label class="small-label">教室</label>
-                      <input
-                        v-model="slot.room"
-                        type="text"
-                        class="form-control room-input"
-                        placeholder="例：有明4-301 / オンライン"
-                      />
                     </div>
                   </div>
-                </div>
+                </template>
               </div>
-              <div class="form-group reminder-group">
-                <label>リマインド</label>
-                <div class="reminder-row">
-                  <div class="reminder-select-group">
-                    <span class="reminder-label">1回目（必須）</span>
-                    <select
-                      v-model="reminder1Minutes"
-                      class="form-control reminder-select"
+              <section
+                class="calendar-event-settings"
+                aria-labelledby="calendar-event-settings-heading"
+              >
+                <div class="calendar-event-settings-inner">
+                  <h3
+                    id="calendar-event-settings-heading"
+                    class="calendar-event-settings-heading"
+                  >
+                    カレンダーイベント設定
+                  </h3>
+                  <div
+                    class="form-group add-delivery-to-summary-row slot-od-add-switch slot-od-add-switch-intensive"
+                  >
+                    <span class="slot-od-add-switch-label"
+                      >タイトルに実施方法を追加</span
                     >
-                      <option
-                        v-for="opt in reminderOptions"
-                        :key="opt.value"
-                        :value="opt.value"
-                      >
-                        {{ opt.label }}
-                      </option>
-                    </select>
+                    <label class="toggle-switch">
+                      <input
+                        v-model="addDeliveryToSummary"
+                        type="checkbox"
+                        class="toggle-switch-input"
+                      />
+                      <span class="toggle-switch-slider"></span>
+                    </label>
                   </div>
-                  <div class="reminder-select-group">
-                    <span class="reminder-label">2回目（任意）</span>
-                    <select
-                      v-model="reminder2Minutes"
-                      class="form-control reminder-select"
-                    >
-                      <option :value="null">なし</option>
-                      <option
-                        v-for="opt in reminderOptions"
-                        :key="opt.value"
-                        :value="opt.value"
-                      >
-                        {{ opt.label }}
-                      </option>
-                    </select>
+                  <div class="form-group reminder-group">
+                    <div class="reminder-row">
+                      <div class="reminder-select-group">
+                        <span class="reminder-label"
+                          >リマインド 1回目（必須）</span
+                        >
+                        <select
+                          v-model="reminder1Minutes"
+                          class="form-control reminder-select"
+                        >
+                          <option
+                            v-for="opt in reminderOptions"
+                            :key="opt.value"
+                            :value="opt.value"
+                          >
+                            {{ opt.label }}
+                          </option>
+                        </select>
+                      </div>
+                      <div class="reminder-select-group">
+                        <span class="reminder-label"
+                          >リマインド 2回目（任意）</span
+                        >
+                        <select
+                          v-model="reminder2Minutes"
+                          class="form-control reminder-select"
+                        >
+                          <option :value="null">なし</option>
+                          <option
+                            v-for="opt in reminderOptions"
+                            :key="opt.value"
+                            :value="opt.value"
+                          >
+                            {{ opt.label }}
+                          </option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <textarea
+                      id="ics-custom-memo"
+                      v-model="customMemo"
+                      class="form-control memo-textarea"
+                      placeholder="カレンダーイベントに表示するメモ（空欄可）"
+                      rows="3"
+                    />
                   </div>
                 </div>
-              </div>
-              <div class="form-group">
-                <label for="ics-custom-memo">メモ（任意）</label>
-                <textarea
-                  id="ics-custom-memo"
-                  v-model="customMemo"
-                  class="form-control memo-textarea"
-                  placeholder="カレンダーイベントに表示するメモ（空欄可）"
-                  rows="3"
-                />
-              </div>
+              </section>
             </template>
             <!-- Calendar form -->
             <template v-else>
@@ -249,7 +420,6 @@
                 </div>
               </div>
               <div class="form-group">
-                <label>リマインド</label>
                 <select
                   v-model="reminderMinutes"
                   class="form-control reminder-select"
@@ -319,14 +489,23 @@
                 <dd>
                   {{ currentPayload.icsExportOptions.subjectName || "—" }}
                 </dd>
-                <dt>曜日・時限・教室</dt>
-                <dd>
+                <dt>
+                  {{
+                    isIntensiveSchedule ||
+                    (currentPayload as ScheduleIcsPayload).intensiveSchedule !=
+                      null ||
+                    currentPayload.icsExportOptions.slots?.[0]?.dateStr
+                      ? "日付・時限・教室"
+                      : "曜日・時限・教室"
+                  }}
+                </dt>
+                <dd class="summary-slots">
                   <span
                     v-for="(slot, i) in currentPayload.icsExportOptions.slots"
                     :key="i"
                     class="slot-item"
                   >
-                    {{ slotLabel(slot) }} {{ slot.room }}
+                    {{ slotLabel(slot) }} {{ slotLocationDisplay(slot) }}
                   </span>
                   <span v-if="!currentPayload.icsExportOptions.slots?.length"
                     >—</span
@@ -417,7 +596,15 @@
             >
               <div class="qr-block">
                 <div class="qr-wrap" v-if="qrUrl">
-                  <img :src="qrImageSrc" alt="QRコード" class="qr-image" />
+                  <img
+                    v-if="qrImageSrc"
+                    :src="qrImageSrc"
+                    alt="QRコード"
+                    class="qr-image"
+                  />
+                  <p v-else-if="qrGenerateError" class="qr-error-msg">
+                    QRコードを生成できませんでした（URLが長すぎます）。「URLをコピー」をご利用ください。
+                  </p>
                 </div>
                 <button type="button" class="btn-copy" @click="copyUrl">
                   URLをコピー
@@ -503,7 +690,15 @@
               </button>
               <div v-if="showAndroidGoogleHelp" class="qr-block">
                 <div class="qr-wrap" v-if="qrUrl">
-                  <img :src="qrImageSrc" alt="QRコード" class="qr-image" />
+                  <img
+                    v-if="qrImageSrc"
+                    :src="qrImageSrc"
+                    alt="QRコード"
+                    class="qr-image"
+                  />
+                  <p v-else-if="qrGenerateError" class="qr-error-msg">
+                    QRコードを生成できませんでした（URLが長すぎます）。「URLをコピー」をご利用ください。
+                  </p>
                 </div>
                 <button type="button" class="btn-copy" @click="copyUrl">
                   URLをコピー
@@ -714,6 +909,8 @@ const props = withDefaults(
     courseDays?: CourseDays;
     classesPerWeek?: ClassesPerWeek;
     classSlots?: import("../types").ClassSlot[];
+    /** 集中授業モード（スロットを日付ごとに1件ずつ表示） */
+    isIntensiveSchedule?: boolean;
     initialSubjectName?: string;
     initialIcsOptions?: IcsExportOptions;
     // calendar props
@@ -731,6 +928,7 @@ const props = withDefaults(
     courseDays: 14,
     classesPerWeek: 1,
     classSlots: () => [],
+    isIntensiveSchedule: false,
     events: () => [],
     initialStep: 0,
     initialCalendarTarget: undefined,
@@ -753,6 +951,8 @@ const subjectName = ref("");
 const slots = ref<IcsSlot[]>([]);
 const reminder1Minutes = ref<number>(1440);
 const reminder2Minutes = ref<number | null>(null);
+/** タイトル（SUMMARY）に実施形態を追加するか。デフォルトはスロットが全て同一形態なら false、混在なら true */
+const addDeliveryToSummary = ref(false);
 const customMemo = ref("");
 const validationError = ref("");
 
@@ -767,6 +967,8 @@ const calendarCustomMemo = ref("");
 // Cached payload when moving from step 0 to 1 (or from URL)
 const savedPayload = ref<IcsPayload | null>(null);
 const qrImageSrc = ref("");
+/** QR 生成失敗（URL が長すぎる等）時に true。表示で「URLをコピー」を案内する */
+const qrGenerateError = ref(false);
 
 const dayNames = DAY_NAMES_FULL;
 const hasClassDays = computed(() =>
@@ -849,9 +1051,30 @@ function slotLabel(slot: IcsSlot): string {
     slot.period != null ? PERIOD_TIMES_MAP[slot.period] : undefined;
   const start = fromMap?.start ?? slot.customStart ?? "09:00";
   const end = fromMap?.end ?? slot.customEnd ?? "10:30";
-  const dayShort = DAY_NAMES[slot.dayOfWeek];
   const periodStr = slot.period != null ? `${slot.period}限` : "カスタム";
-  return `${dayShort}${periodStr}（${start}～${end}）`;
+  const dateOrDay =
+    slot.dateStr != null && slot.dateStr !== ""
+      ? formatDateLabel(slot.dateStr)
+      : DAY_NAMES[slot.dayOfWeek];
+  const sep = slot.dateStr != null && slot.dateStr !== "" ? " " : "";
+  return `${dateOrDay}${sep}${periodStr}（${start}～${end}）`;
+}
+
+/** 設定内容・曜日・時限・教室の「教室」表示（LOCATION と同一ロジック） */
+function slotLocationDisplay(slot: IcsSlot): string {
+  const mode = slot.deliveryType;
+  const room = (slot.room ?? "").trim();
+  if (mode === "on-demand") return "オンデマンド";
+  if (mode === "face-to-face") return room;
+  if (mode === "online") return room || "オンライン";
+  return room || "";
+}
+
+/** 全スロットの実施形態が同一なら true（0 or 1 件も true）。addDeliveryToSummary のデフォルト算出用 */
+function allSameDeliveryType(slots: IcsSlot[]): boolean {
+  if (slots.length <= 1) return true;
+  const first = slots[0]?.deliveryType;
+  return slots.every((s) => s.deliveryType === first);
 }
 
 function reminderMinutesToLabel(minutes: number | null | undefined): string {
@@ -881,17 +1104,72 @@ function includeTypesLabel(types: string[]): string {
 }
 
 function isSlotOd(slotIndex: number): boolean {
+  if (props.isIntensiveSchedule) {
+    const slot = slots.value[slotIndex];
+    return slot != null && slot.addToCalendar !== undefined;
+  }
   const cs = props.classSlots ?? [];
   const s = cs[slotIndex];
   return s?.deliveryType === "on-demand";
 }
 
+/** 集中授業: 日付ラベル（例: 2026/8/5）。YYYY-MM-DD または「2026年08月18日（火）」形式を短い y/m/d に */
+function formatDateLabel(dateStr: string): string {
+  if (!dateStr || typeof dateStr !== "string") return "—";
+  const trimmed = dateStr.trim();
+  const isoParts = trimmed.split("-");
+  if (isoParts.length === 3) {
+    const y = Number(isoParts[0]);
+    const m = Number(isoParts[1]);
+    const d = Number(isoParts[2]);
+    if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d))
+      return `${y}/${m}/${d}`;
+  }
+  const jpMatch = /^(\d{4})年(\d{1,2})月(\d{1,2})日/.exec(trimmed);
+  if (jpMatch) {
+    const y = Number(jpMatch[1]);
+    const m = Number(jpMatch[2]);
+    const d = Number(jpMatch[3]);
+    if (!Number.isNaN(y) && !Number.isNaN(m) && !Number.isNaN(d))
+      return `${y}/${m}/${d}`;
+  }
+  return trimmed;
+}
+
+/** 集中授業: スロットを日付ごとにグループ化 */
+const intensiveSlotGroups = computed(() => {
+  const list: { dateStr: string; indices: number[] }[] = [];
+  const byDate = new Map<string, number[]>();
+  slots.value.forEach((slot, idx) => {
+    const d = slot.dateStr ?? "";
+    if (!d) return;
+    const arr = byDate.get(d) ?? [];
+    arr.push(idx);
+    byDate.set(d, arr);
+  });
+  const sorted = [...byDate.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  return sorted.map(([dateStr, indices]) => ({ dateStr, indices }));
+});
+
 function initSlots() {
+  if (props.isIntensiveSchedule && props.schedule?.length) {
+    const items = props.schedule.filter((item) => !item.isHoliday);
+    slots.value = items.map((item) => ({
+      dayOfWeek: 0 as import("../types").DayOfWeek,
+      dateStr: item.dateStr,
+      period: (item.period ?? 1) as IcsSlot["period"],
+      room: item.deliveryMode === "online" ? "オンライン" : "",
+      deliveryType: item.deliveryMode,
+      addToCalendar: item.deliveryMode === "on-demand" ? true : undefined,
+    }));
+    return;
+  }
   const cs = props.classSlots ?? [];
   slots.value = cs.map((slot) => ({
     dayOfWeek: slot.dayOfWeek,
     period: (slot.period ?? 1) as IcsSlot["period"],
     room: slot.deliveryType === "online" ? "オンライン" : "",
+    deliveryType: slot.deliveryType,
     addToCalendar: slot.deliveryType === "on-demand" ? true : undefined,
   }));
 }
@@ -946,13 +1224,16 @@ function buildPayload(): IcsPayload | null {
         customStart: s.customStart,
         customEnd: s.customEnd,
         room: s.room.trim(),
+        deliveryType: s.deliveryType,
         addToCalendar: s.addToCalendar,
+        dateStr: s.dateStr,
       })),
       reminder1Minutes: reminder1Minutes.value,
       reminder2Minutes: reminder2Minutes.value ?? undefined,
+      addDeliveryToSummary: addDeliveryToSummary.value,
       customMemo: customMemo.value.trim() || undefined,
     };
-    return {
+    const base: ScheduleIcsPayload = {
       type: "schedule",
       year: y,
       semester: props.semester ?? "前期",
@@ -960,7 +1241,11 @@ function buildPayload(): IcsPayload | null {
       classesPerWeek,
       classSlots,
       icsExportOptions,
-    } as ScheduleIcsPayload;
+    };
+    if (props.isIntensiveSchedule && props.schedule?.length) {
+      base.intensiveSchedule = props.schedule;
+    }
+    return base;
   } else {
     if (!hasEvents.value || includeTypes.value.length === 0) return null;
     const y = props.year ?? 0;
@@ -1007,9 +1292,15 @@ function goToStep1() {
 
 function goToStep2() {
   step.value = 2;
+  qrImageSrc.value = "";
+  qrGenerateError.value = false;
   if (qrUrl.value) {
     QRCode.toDataURL(qrUrl.value, { width: 256 }, (err, url) => {
-      if (!err && url) qrImageSrc.value = url;
+      if (!err && url) {
+        qrImageSrc.value = url;
+      } else {
+        qrGenerateError.value = true;
+      }
     });
   }
 }
@@ -1038,15 +1329,26 @@ watch(
         step.value = 2;
         savedPayload.value = initPayload;
         calendarTarget.value = initTarget;
-        if (qrUrl.value) {
-          QRCode.toDataURL(qrUrl.value, { width: 256 }, (err, url) => {
-            if (!err && url) qrImageSrc.value = url;
-          });
-        }
+        qrImageSrc.value = "";
+        qrGenerateError.value = false;
+        nextTick(() => {
+          const urlToEncode = qrUrl.value;
+          if (urlToEncode) {
+            QRCode.toDataURL(urlToEncode, { width: 256 }, (err, url) => {
+              if (!err && url) {
+                qrImageSrc.value = url;
+              } else {
+                qrGenerateError.value = true;
+              }
+            });
+          }
+        });
       } else {
         step.value = 0;
         savedPayload.value = null;
         calendarTarget.value = "apple";
+        qrImageSrc.value = "";
+        qrGenerateError.value = false;
       }
     }
   },
@@ -1063,38 +1365,99 @@ watch(
 );
 
 watch(
-  () => [props.visible, props.source, props.classSlots] as const,
-  ([visible, src, classSlots]) => {
+  () =>
+    [
+      props.visible,
+      props.source,
+      props.classSlots,
+      props.isIntensiveSchedule,
+      props.schedule,
+    ] as const,
+  ([visible, src, classSlots, isIntensive, schedule]) => {
     if (visible) {
-      if (src === "schedule" && Array.isArray(classSlots)) {
+      if (src === "schedule") {
         const opts = props.initialIcsOptions;
-        if (opts) {
+        const hasIntensiveOpts =
+          opts?.slots?.length && opts.slots.some((s) => s.dateStr != null);
+        if (
+          opts &&
+          (isIntensive ? hasIntensiveOpts : Array.isArray(classSlots))
+        ) {
           subjectName.value = opts.subjectName ?? "";
-          const cs = props.classSlots ?? [];
-          slots.value = opts.slots.map((s, i) => {
-            const od = cs[i]?.deliveryType === "on-demand";
-            const period =
-              s.period != null
-                ? s.period
-                : od && (s as { odAllDay?: boolean }).odAllDay === false
-                  ? null
-                  : (1 as IcsSlot["period"]);
-            return {
+          if (isIntensive && hasIntensiveOpts) {
+            slots.value = opts.slots.map((s) => ({
               ...s,
+              dayOfWeek: (s.dayOfWeek ?? 0) as import("../types").DayOfWeek,
               room: s.room ?? "",
-              period,
-              addToCalendar: od ? s.addToCalendar !== false : s.addToCalendar,
-            };
-          });
+              period: s.period ?? (1 as IcsSlot["period"]),
+              addToCalendar: s.addToCalendar !== false,
+            }));
+          } else if (!isIntensive && Array.isArray(classSlots)) {
+            const cs = props.classSlots ?? [];
+            slots.value = opts.slots.map((s, i) => {
+              const od = cs[i]?.deliveryType === "on-demand";
+              const period =
+                s.period != null
+                  ? s.period
+                  : od && (s as { odAllDay?: boolean }).odAllDay === false
+                    ? null
+                    : (1 as IcsSlot["period"]);
+              return {
+                ...s,
+                room: s.room ?? "",
+                period,
+                addToCalendar: od ? s.addToCalendar !== false : s.addToCalendar,
+              };
+            });
+          }
           reminder1Minutes.value = opts.reminder1Minutes ?? 1440;
           reminder2Minutes.value = opts.reminder2Minutes ?? null;
+          addDeliveryToSummary.value =
+            opts.addDeliveryToSummary ?? !allSameDeliveryType(slots.value);
           customMemo.value = opts.customMemo ?? "";
         } else {
           initSlots();
           subjectName.value = props.initialSubjectName?.trim() ?? "";
           reminder1Minutes.value = 1440;
           reminder2Minutes.value = null;
+          addDeliveryToSummary.value = !allSameDeliveryType(slots.value);
           customMemo.value = "";
+          if (isIntensive && opts?.slots?.length && slots.value.length) {
+            const optsSlots = opts.slots.filter((s) => s.dateStr != null);
+            const byDate = new Map<string, number[]>();
+            slots.value.forEach((s, i) => {
+              if (s.dateStr) {
+                const arr = byDate.get(s.dateStr) ?? [];
+                arr.push(i);
+                byDate.set(s.dateStr, arr);
+              }
+            });
+            byDate.forEach((indices, dateStr) => {
+              const optsForDate = optsSlots.filter(
+                (s) => s.dateStr === dateStr,
+              );
+              indices.forEach((idx, p) => {
+                const from = optsForDate[p];
+                if (from && slots.value[idx]) {
+                  slots.value[idx]!.room = from.room ?? slots.value[idx]!.room;
+                  slots.value[idx]!.period =
+                    from.period ?? slots.value[idx]!.period;
+                  slots.value[idx]!.addToCalendar =
+                    from.addToCalendar !== false;
+                  if (from.customStart != null)
+                    slots.value[idx]!.customStart = from.customStart;
+                  if (from.customEnd != null)
+                    slots.value[idx]!.customEnd = from.customEnd;
+                }
+              });
+            });
+            subjectName.value = opts.subjectName ?? subjectName.value;
+            reminder1Minutes.value = opts.reminder1Minutes ?? 1440;
+            reminder2Minutes.value = opts.reminder2Minutes ?? null;
+            addDeliveryToSummary.value =
+              opts.addDeliveryToSummary ?? !allSameDeliveryType(slots.value);
+            customMemo.value = opts.customMemo ?? "";
+          }
         }
         validationError.value = "";
       } else if (src === "calendar") {
@@ -1236,12 +1599,43 @@ watch(
   border-radius: 6px;
 }
 
+.intensive-date-area {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f0f4f8;
+  border-radius: 8px;
+  border: 1px solid #e0e6ed;
+}
+.intensive-date-label {
+  display: block;
+  font-weight: bold;
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 10px;
+}
 .slot-label {
   font-weight: bold;
   font-size: 13px;
   color: #333;
   margin-bottom: 8px;
   display: block;
+}
+
+/* 通常授業 OD: 配信日をカレンダーに追加 と 配信時間 を一行に */
+.slot-od-one-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.slot-od-one-row .slot-od-add-switch {
+  margin-bottom: 6px;
+}
+
+.slot-od-one-row .slot-od-add-switch-intensive {
+  margin-bottom: 6px;
 }
 
 .slot-od-add-switch {
@@ -1254,6 +1648,20 @@ watch(
 .slot-od-add-switch .switch-label {
   font-size: 13px;
   color: #333;
+}
+
+/* 集中授業: 上下配置・ラベルは小さくグレー・左揃え */
+.slot-od-add-switch-intensive {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.slot-od-add-switch-intensive .slot-od-add-switch-label {
+  font-size: 11px;
+  color: #666;
+  margin-bottom: 7px;
 }
 
 .slot-od-add-switch .toggle-switch {
@@ -1331,6 +1739,27 @@ watch(
 .room-group {
   flex: 1 1 180px;
   min-width: 0;
+}
+
+.calendar-event-settings {
+  margin-top: 20px;
+}
+
+.calendar-event-settings-inner {
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+}
+
+.calendar-event-settings-heading {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.calendar-event-settings .reminder-group {
+  margin-top: 0;
 }
 
 .reminder-group {
@@ -1475,10 +1904,14 @@ watch(
   color: #333;
 }
 
-.slot-item {
-  display: inline-block;
-  margin-right: 8px;
-  margin-bottom: 4px;
+.summary-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-slots .slot-item {
+  display: block;
 }
 
 .step2-content {
@@ -1531,6 +1964,17 @@ watch(
   display: block;
   width: 200px;
   height: 200px;
+}
+
+.qr-error-msg {
+  width: 200px;
+  min-height: 80px;
+  margin: 0;
+  padding: 12px;
+  font-size: 12px;
+  color: #b45309;
+  line-height: 1.4;
+  box-sizing: border-box;
 }
 
 .action-desc {

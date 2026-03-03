@@ -1,4 +1,8 @@
-import type { CalendarData, YearData } from "../types";
+import type {
+  CalendarData,
+  YearData,
+  ScheduleItem,
+} from "../types";
 import type {
   ScheduleIcsPayload,
   CalendarIcsPayload,
@@ -32,15 +36,36 @@ export function downloadIcsFromPayload(
 
   if (payload.type === "schedule") {
     const p = payload as ScheduleIcsPayload;
-    const yearData = calendarData.years[String(p.year)] as YearData | undefined;
-    if (!yearData) return false;
+    let schedule: ScheduleItem[];
+    const isIntensiveBySlots =
+      p.icsExportOptions?.slots?.length &&
+      p.icsExportOptions.slots[0]?.dateStr != null;
 
-    const schedule = generateSchedule(
-      yearData,
-      p.semester,
-      p.courseDays,
-      p.classSlots
-    );
+    if (p.intensiveSchedule?.length) {
+      schedule = p.intensiveSchedule.map(
+        (item: ScheduleItem & { date?: Date | string }) => ({
+          ...item,
+          date:
+            item.date instanceof Date
+              ? item.date
+              : new Date((item as { dateStr: string }).dateStr),
+        }),
+      ) as ScheduleItem[];
+    } else if (isIntensiveBySlots) {
+      /* URL 短縮で intensiveSchedule を省略した場合。ICS は slots のみで生成 */
+      schedule = [];
+    } else {
+      const yearData = calendarData.years[String(p.year)] as
+        | YearData
+        | undefined;
+      if (!yearData) return false;
+      schedule = generateSchedule(
+        yearData,
+        p.semester,
+        p.courseDays,
+        p.classSlots,
+      );
+    }
 
     const blob = buildScheduleIcsBlob(
       schedule,

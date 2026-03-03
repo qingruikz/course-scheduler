@@ -6,6 +6,7 @@ import type {
   ClassSlot,
   SemesterOption,
   DayOfWeek,
+  DeliveryMode,
   CalendarEvent,
   CalendarEventsIcsOptions,
 } from "../types";
@@ -190,19 +191,47 @@ function getStartEndForSlot(slot: IcsSlot): { start: string; end: string } {
   };
 }
 
-/** スロットの「火4限（15:00～16:40）」形式ラベル */
+/** スロットの「火4限（15:00～16:40）」形式ラベル。dateStr ありの場合は「YYYY/MM/DD N限」 */
 function slotTimeLabel(slot: IcsSlot): string {
   const { start, end } = getStartEndForSlot(slot);
+  if (slot.dateStr) {
+    const [y, m, d] = slot.dateStr.split("-");
+    const periodStr = slot.period !== null ? `${slot.period}限` : "カスタム";
+    return `${y}/${Number(m)}/${Number(d)} ${periodStr}（${start}～${end}）`;
+  }
   const dayShort = DAY_NAMES[slot.dayOfWeek];
   const periodStr = slot.period !== null ? `${slot.period}限` : "カスタム";
   return `${dayShort}${periodStr}（${start}～${end}）`;
 }
 
-/** LOCATION 「（火4）教室」形式 */
+/** 実施形態の表示ラベル（SUMMARY 用） */
+function deliveryTypeSummarySuffix(mode: DeliveryMode | undefined): string {
+  if (mode === "on-demand") return "オンデマンド";
+  if (mode === "face-to-face") return "対面";
+  if (mode === "online") return "オンライン";
+  return "";
+}
+
+/** RT: 教室があればその値、なければ対面は空・オンラインは「オンライン」。OD: 常に「オンデマンド」。deliveryType 未設定時は slot.room をそのまま使用 */
+function getLocationForSlot(slot: IcsSlot): string {
+  const mode = slot.deliveryType as DeliveryMode | undefined;
+  const room = (slot.room ?? "").trim();
+  if (mode === "on-demand") return "オンデマンド";
+  if (mode === "face-to-face") return room;
+  if (mode === "online") return room || "オンライン";
+  return room || "";
+}
+
+/** LOCATION 「（火4）教室」形式。dateStr ありの場合は「（YYYY/MM/DD）教室」。教室は getLocationForSlot で算出 */
 function slotLocationPart(slot: IcsSlot): string {
+  const location = getLocationForSlot(slot);
+  if (slot.dateStr) {
+    const [y, m, d] = slot.dateStr.split("-");
+    return `（${y}/${Number(m)}/${Number(d)}）${location}`;
+  }
   const dayShort = DAY_NAMES[slot.dayOfWeek];
   const periodStr = slot.period !== null ? String(slot.period) : "?";
-  return `（${dayShort}${periodStr}）${slot.room}`;
+  return `（${dayShort}${periodStr}）${location}`;
 }
 
 /** VALARM の TRIGGER 文字列（開始前） */
@@ -228,20 +257,7 @@ export function buildScheduleIcsBlob(
 ): Blob {
   const classItems = schedule.filter((item) => !item.isHoliday);
   const slots = options.slots;
-  const locationLine = slots.map(slotLocationPart).join(", ");
-  const timeLimitLine = slots.map(slotTimeLabel).join("+");
-  const courseInfoLines = [
-    "【講義情報】",
-    `科目名　　：${options.subjectName}`,
-    `曜日・時限：${semester}${timeLimitLine}`,
-    `教室　　　：${locationLine}`,
-  ];
-  const customMemo = options.customMemo?.trim();
-  const descriptionBody = customMemo
-    ? courseInfoLines.join("\n") + "\n\n" + customMemo
-    : courseInfoLines.join("\n");
-
-  const holidayItems = schedule.filter((item) => item.isHoliday);
+  const isIntensive = slots.length > 0 && slots[0]?.dateStr != null;
 
   const lines: string[] = [
     "BEGIN:VCALENDAR",
@@ -250,63 +266,129 @@ export function buildScheduleIcsBlob(
     "CALSCALE:GREGORIAN",
   ];
 
-  for (let slotIndex = 0; slotIndex < slots.length; slotIndex++) {
-    const slot = slots[slotIndex];
-    if (!slot) continue;
-    const classSlot = classSlots?.[slotIndex];
-    const isOd = classSlot?.deliveryType === "on-demand";
-    if (isOd && slot.addToCalendar === false) continue;
+  const reminders = [
+    options.reminder1Minutes,
+    options.reminder2Minutes != null && options.reminder2Minutes !== undefined
+      ? options.reminder2Minutes
+      : null,
+  ].filter((m): m is number => typeof m === "number");
+  const customMemo = options.customMemo?.trim();
 
-    const dow = slot.dayOfWeek;
-    const classDatesForSlot = classItems.filter(
-      (item) => (item.date.getDay() as DayOfWeek) === dow,
-    );
-    if (classDatesForSlot.length === 0) continue;
+  if (isIntensive) {
+    for (let slotIndex = 0; slotIndex < slots.length; slotIndex++) {
+      const slot = slots[slotIndex];
+      if (!slot?.dateStr) continue;
+      if (slot.addToCalendar === false) continue;
 
-    const reminders = [
-      options.reminder1Minutes,
-      options.reminder2Minutes != null && options.reminder2Minutes !== undefined
-        ? options.reminder2Minutes
-        : null,
-    ].filter((m): m is number => typeof m === "number");
+      const eventDate = new Date(slot.dateStr + "T12:00:00");
+      const { start, end } = getStartEndForSlot(slot);
+      const dtStart = formatIcsDateTime(eventDate, start);
+      const dtEnd = formatIcsDateTime(eventDate, end);
+      const timeLimitLine = slotTimeLabel(slot);
+      const locationForDesc = getLocationForSlot(slot);
+      const courseInfoLines = [
+        "【講義情報】",
+        `科目名　　：${options.subjectName}`,
+        `日付・時限：${timeLimitLine}`,
+        `教室　　　：${locationForDesc}`,
+      ];
+      const descriptionBody = customMemo
+        ? courseInfoLines.join("\n") + "\n\n" + customMemo
+        : courseInfoLines.join("\n");
 
-    const firstDate = classDatesForSlot[0]!.date;
-    const lastDate = classDatesForSlot[classDatesForSlot.length - 1]!.date;
-    const { start, end } = getStartEndForSlot(slot);
-
-    const dtStart = formatIcsDateTime(firstDate, start);
-    const dtEnd = formatIcsDateTime(firstDate, end);
-    const untilStr = formatIcsDateTime(lastDate, start);
-    const byDay = BYDAY_ICS[dow];
-    const rrule = `FREQ=WEEKLY;BYDAY=${byDay};UNTIL=${untilStr}`;
-
-    const exdates = holidayItems
-      .filter((item) => (item.date.getDay() as DayOfWeek) === dow)
-      .map((item) => formatIcsDateTime(item.date, start));
-
-    const uid = `course-scheduler-${options.subjectName}-${dow}-${slotIndex}`;
-
-    lines.push("BEGIN:VEVENT");
-    lines.push(`UID:${uid}`);
-    lines.push(`DTSTART:${dtStart}`);
-    lines.push(`DTEND:${dtEnd}`);
-    lines.push(`RRULE:${rrule}`);
-    for (const ex of exdates) {
-      lines.push(`EXDATE:${ex}`);
+      const uid = `course-scheduler-${options.subjectName}-${slot.dateStr}-${slotIndex}`;
+      const summarySuffix =
+        options.addDeliveryToSummary &&
+        deliveryTypeSummarySuffix(slot.deliveryType as DeliveryMode | undefined)
+          ? `（${deliveryTypeSummarySuffix(slot.deliveryType as DeliveryMode | undefined)}）`
+          : "";
+      const summary = `${options.subjectName}${summarySuffix}`;
+      lines.push("BEGIN:VEVENT");
+      lines.push(`UID:${uid}`);
+      lines.push(`DTSTART:${dtStart}`);
+      lines.push(`DTEND:${dtEnd}`);
+      lines.push(`SUMMARY:${escapeIcsValue(summary)}`);
+      lines.push(`LOCATION:${escapeIcsValue(getLocationForSlot(slot))}`);
+      const descFolded = formatDescriptionFolded(descriptionBody);
+      lines.push(...descFolded.split("\r\n"));
+      for (const min of reminders) {
+        lines.push("BEGIN:VALARM");
+        lines.push("ACTION:DISPLAY");
+        lines.push(`TRIGGER:${alarmTrigger(min)}`);
+        lines.push("END:VALARM");
+      }
+      lines.push("END:VEVENT");
     }
-    lines.push(`SUMMARY:${escapeIcsValue(options.subjectName)}`);
-    lines.push(`LOCATION:${escapeIcsValue(locationLine)}`);
-    const descFolded = formatDescriptionFolded(descriptionBody);
-    lines.push(...descFolded.split("\r\n"));
+  } else {
+    const locationLine = slots.map(slotLocationPart).join(", ");
+    const timeLimitLine = slots.map(slotTimeLabel).join("+");
+    const courseInfoLines = [
+      "【講義情報】",
+      `科目名　　：${options.subjectName}`,
+      `曜日・時限：${semester}${timeLimitLine}`,
+      `教室　　　：${locationLine}`,
+    ];
+    const descriptionBody = customMemo
+      ? courseInfoLines.join("\n") + "\n\n" + customMemo
+      : courseInfoLines.join("\n");
+    const holidayItems = schedule.filter((item) => item.isHoliday);
 
-    for (const min of reminders) {
-      lines.push("BEGIN:VALARM");
-      lines.push("ACTION:DISPLAY");
-      lines.push(`TRIGGER:${alarmTrigger(min)}`);
-      lines.push("END:VALARM");
+    for (let slotIndex = 0; slotIndex < slots.length; slotIndex++) {
+      const slot = slots[slotIndex];
+      if (!slot) continue;
+      const classSlot = classSlots?.[slotIndex];
+      const isOd = classSlot?.deliveryType === "on-demand";
+      if (isOd && slot.addToCalendar === false) continue;
+
+      const dow = slot.dayOfWeek;
+      const classDatesForSlot = classItems.filter(
+        (item) => (item.date.getDay() as DayOfWeek) === dow,
+      );
+      if (classDatesForSlot.length === 0) continue;
+
+      const firstDate = classDatesForSlot[0]!.date;
+      const lastDate = classDatesForSlot[classDatesForSlot.length - 1]!.date;
+      const { start, end } = getStartEndForSlot(slot);
+
+      const dtStart = formatIcsDateTime(firstDate, start);
+      const dtEnd = formatIcsDateTime(firstDate, end);
+      const untilStr = formatIcsDateTime(lastDate, start);
+      const byDay = BYDAY_ICS[dow];
+      const rrule = `FREQ=WEEKLY;BYDAY=${byDay};UNTIL=${untilStr}`;
+
+      const exdates = holidayItems
+        .filter((item) => (item.date.getDay() as DayOfWeek) === dow)
+        .map((item) => formatIcsDateTime(item.date, start));
+
+      const uid = `course-scheduler-${options.subjectName}-${dow}-${slotIndex}`;
+      const summarySuffix =
+        options.addDeliveryToSummary && slot.deliveryType
+          ? `（${deliveryTypeSummarySuffix(slot.deliveryType as DeliveryMode)}）`
+          : "";
+      const summary = `${options.subjectName}${summarySuffix}`;
+
+      lines.push("BEGIN:VEVENT");
+      lines.push(`UID:${uid}`);
+      lines.push(`DTSTART:${dtStart}`);
+      lines.push(`DTEND:${dtEnd}`);
+      lines.push(`RRULE:${rrule}`);
+      for (const ex of exdates) {
+        lines.push(`EXDATE:${ex}`);
+      }
+      lines.push(`SUMMARY:${escapeIcsValue(summary)}`);
+      lines.push(`LOCATION:${escapeIcsValue(locationLine)}`);
+      const descFolded = formatDescriptionFolded(descriptionBody);
+      lines.push(...descFolded.split("\r\n"));
+
+      for (const min of reminders) {
+        lines.push("BEGIN:VALARM");
+        lines.push("ACTION:DISPLAY");
+        lines.push(`TRIGGER:${alarmTrigger(min)}`);
+        lines.push("END:VALARM");
+      }
+
+      lines.push("END:VEVENT");
     }
-
-    lines.push("END:VEVENT");
   }
 
   lines.push("END:VCALENDAR");

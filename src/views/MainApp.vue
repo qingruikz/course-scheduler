@@ -178,6 +178,10 @@
       :course-days="selectedCourseDays"
       :classes-per-week="selectedClassesPerWeek"
       :class-slots="classSlots"
+      :is-intensive-schedule="
+        isIntensiveSemester &&
+        (schedule.length > 0 || isIntensiveEmptyState)
+      "
       :initial-subject-name="currentSubject"
       :initial-ics-options="
         settingsStore.currentSubjectSettings.icsExportOptions
@@ -622,7 +626,12 @@ function onCalendarAddDownloadIcs(
   } else {
     settingsStore.setCalendarIcsOptions(payload.calendarIcsOptions);
   }
-  downloadIcsFromPayload(payload, calendarData.value);
+  if (!downloadIcsFromPayload(payload, calendarData.value)) {
+    showNotification(
+      "カレンダーデータを読み込んでから再度お試しください。",
+      "error",
+    );
+  }
 }
 
 function checkCalendarModalUrlParams() {

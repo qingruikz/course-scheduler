@@ -1,3 +1,4 @@
+import pako from "pako";
 import type {
   SemesterOption,
   CourseDays,
@@ -7,6 +8,7 @@ import type {
   DeliveryMode,
   IcsExportOptions,
   CalendarEventsIcsOptions,
+  ScheduleItem,
 } from "../types";
 
 /** URL に載せる科目 ICS 用ペイロード */
@@ -18,6 +20,8 @@ export interface ScheduleIcsPayload {
   classesPerWeek: ClassesPerWeek;
   classSlots: ClassSlot[];
   icsExportOptions: IcsExportOptions;
+  /** 集中授業時: 実際の授業日程。ICS はこの日付と slots（各 dateStr）に基づき 1 件 1 イベントで出力 */
+  intensiveSchedule?: ScheduleItem[];
 }
 
 /** URL に載せる学年暦 ICS 用ペイロード */
@@ -40,18 +44,68 @@ function base64UrlEncode(str: string): string {
 
 /** base64url を UTF-8 文字列にデコード */
 function base64UrlDecode(str: string): string {
+  return new TextDecoder().decode(base64UrlDecodeToBytes(str));
+}
+
+/** base64url をバイナリとしてデコード */
+function base64UrlDecodeToBytes(str: string): Uint8Array {
   const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
   const pad = base64.length % 4;
   const padded = pad ? base64 + "=".repeat(4 - pad) : base64;
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
+  return bytes;
 }
 
-/** JSON を base64url にエンコード（+ / を - _ に置換） */
+/** バイナリを base64url にエンコード */
+function base64UrlEncodeBytes(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++)
+    binary += String.fromCharCode(bytes[i]!);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/** 日付文字列を URL 用に YYYY-MM-DD に正規化。「2026年08月18日（火）」→ "2026-08-18" */
+function toIsoDateStr(s: string | null | undefined): string | undefined {
+  if (s == null || typeof s !== "string" || !s.trim()) return undefined;
+  const trimmed = s.trim();
+  const isoMatch = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(trimmed);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${y}-${m!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+  }
+  const jpMatch = /^(\d{4})年(\d{1,2})月(\d{1,2})日/.exec(trimmed);
+  if (jpMatch) {
+    const [, y, m, d] = jpMatch;
+    return `${y}-${m!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+  }
+  return trimmed;
+}
+
+/** URL/QR 用に schedule ペイロードを短縮：slots の dateStr を ISO にし、intensiveSchedule を省略 */
+function normalizeSchedulePayloadForUrl(p: ScheduleIcsPayload): ScheduleIcsPayload {
+  const slots = p.icsExportOptions?.slots?.map((slot) => {
+    const dateStr = toIsoDateStr(slot.dateStr) ?? slot.dateStr;
+    return { ...slot, dateStr };
+  }) ?? [];
+  const icsExportOptions = { ...p.icsExportOptions, slots };
+  const { intensiveSchedule: _, ...rest } = p;
+  return { ...rest, icsExportOptions };
+}
+
+/** 圧縮付き q のプレフィックス。先頭がこれなら base64url → inflate → JSON */
+const COMPRESSED_PREFIX = "z";
+
+/** JSON を deflate 圧縮して base64url にエンコード。先頭に "z" を付与。schedule の場合は dateStr を ISO にし intensiveSchedule を省略して短縮 */
 export function encodePayload(payload: IcsPayload): string {
-  return base64UrlEncode(JSON.stringify(payload));
+  const toEncode =
+    payload.type === "schedule"
+      ? normalizeSchedulePayloadForUrl(payload)
+      : payload;
+  const jsonStr = JSON.stringify(toEncode);
+  const compressed = pako.deflate(jsonStr);
+  return COMPRESSED_PREFIX + base64UrlEncodeBytes(compressed);
 }
 
 /** v1 形式の schedule ペイロードを classSlots に変換 */
@@ -71,10 +125,16 @@ function migrateSchedulePayloadToV2(d: unknown): ScheduleIcsPayload {
   return { ...p, classSlots } as ScheduleIcsPayload;
 }
 
-/** base64url をデコードしてペイロードを返す。不正な場合は null */
+/** base64url をデコードしてペイロードを返す。先頭 "z" の場合は deflate 解凍。不正な場合は null */
 export function decodePayload(q: string): IcsPayload | null {
   try {
-    const json = base64UrlDecode(q);
+    let json: string;
+    if (q.startsWith(COMPRESSED_PREFIX)) {
+      const bytes = base64UrlDecodeToBytes(q.slice(COMPRESSED_PREFIX.length));
+      json = pako.inflate(bytes, { to: "string" });
+    } else {
+      json = base64UrlDecode(q);
+    }
     const data = JSON.parse(json) as unknown;
     if (!data || typeof data !== "object") return null;
     const type = (data as { type?: string }).type;
