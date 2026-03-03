@@ -26,7 +26,7 @@
               <line x1="3" y1="10" x2="21" y2="10"></line>
             </svg>
           </button>
-          <div class="dropdown">
+          <div ref="dropdownRef" class="dropdown">
             <button
               class="icon-button export-button"
               @click="showExportMenu = !showExportMenu"
@@ -171,7 +171,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch, nextTick, onBeforeUnmount } from "vue";
 import type { ScheduleItem } from "../types";
 import type { DeliveryMode } from "../types";
 import DeliveryIcon from "./DeliveryIcon.vue";
@@ -201,6 +201,33 @@ const emit = defineEmits<{
 }>();
 
 const showExportMenu = ref(false);
+const dropdownRef = ref<HTMLElement | null>(null);
+
+let offClickOutside: (() => void) | null = null;
+
+watch(showExportMenu, (open) => {
+  if (!open) {
+    offClickOutside?.();
+    offClickOutside = null;
+    return;
+  }
+  nextTick(() => {
+    const handler = (e: MouseEvent) => {
+      const el = dropdownRef.value;
+      if (el && e.target instanceof Node && !el.contains(e.target)) {
+        showExportMenu.value = false;
+        offClickOutside?.();
+        offClickOutside = null;
+      }
+    };
+    setTimeout(() => document.addEventListener("click", handler), 0);
+    offClickOutside = () => document.removeEventListener("click", handler);
+  });
+});
+
+onBeforeUnmount(() => {
+  offClickOutside?.();
+});
 
 function scheduleItemTitle(item: ScheduleItem): string {
   if (item.isHoliday) {

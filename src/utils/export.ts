@@ -222,9 +222,10 @@ function getLocationForSlot(slot: IcsSlot): string {
   return room || "";
 }
 
-/** LOCATION 「（火4）教室」形式。dateStr ありの場合は「（YYYY/MM/DD）教室」。教室は getLocationForSlot で算出 */
+/** LOCATION 「（火4）教室」形式。dateStr ありの場合は「（YYYY/MM/DD）教室」。教室は getLocationForSlot で算出。対面で教室未入力の場合は空（(月1) 等を出さない） */
 function slotLocationPart(slot: IcsSlot): string {
   const location = getLocationForSlot(slot);
+  if (!location) return "";
   if (slot.dateStr) {
     const [y, m, d] = slot.dateStr.split("-");
     return `（${y}/${Number(m)}/${Number(d)}）${location}`;
@@ -320,7 +321,7 @@ export function buildScheduleIcsBlob(
       lines.push("END:VEVENT");
     }
   } else {
-    const locationLine = slots.map(slotLocationPart).join(", ");
+    const locationLine = slots.map(slotLocationPart).filter(Boolean).join(", ");
     const timeLimitLine = slots.map(slotTimeLabel).join("+");
     const courseInfoLines = [
       "【講義情報】",
