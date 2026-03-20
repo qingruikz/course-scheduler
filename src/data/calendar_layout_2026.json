@@ -10,16 +10,16 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.51,
-        "y": 0.579,
-        "width": 0.456,
-        "height": 0.126
+        "x": 0.509,
+        "y": 0.586,
+        "width": 0.457,
+        "height": 0.125
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
-        "paddingLeft": 0.09,
-        "paddingRight": 0.003
+        "paddingBottom": 0.004,
+        "paddingLeft": 0.088,
+        "paddingRight": 0.004
       },
       "leadingBlanks": 5,
       "firstCellDate": "2027-01-01",
@@ -29,16 +29,16 @@
       "imageId": "page1",
       "rowCount": 4,
       "monthBox": {
-        "x": 0.51,
-        "y": 0.715,
-        "width": 0.456,
+        "x": 0.509,
+        "y": 0.721,
+        "width": 0.457,
         "height": 0.1
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
-        "paddingLeft": 0.09,
-        "paddingRight": 0.002
+        "paddingBottom": 0.004,
+        "paddingLeft": 0.089,
+        "paddingRight": 0.004
       },
       "leadingBlanks": 0,
       "firstCellDate": "2027-01-31",
@@ -48,16 +48,16 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.51,
-        "y": 0.8255377136122569,
-        "width": 0.45667713122420617,
-        "height": 0.12492634060106067
+        "x": 0.509,
+        "y": 0.831,
+        "width": 0.457,
+        "height": 0.126
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
-        "paddingLeft": 0.09,
-        "paddingRight": 0.005
+        "paddingBottom": 0.004,
+        "paddingLeft": 0.091,
+        "paddingRight": 0.004
       },
       "leadingBlanks": 0,
       "firstCellDate": "2027-02-28",
@@ -67,16 +67,16 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.034,
-        "y": 0.172,
-        "width": 0.458,
+        "x": 0.033,
+        "y": 0.179,
+        "width": 0.459,
         "height": 0.127
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
-        "paddingLeft": 0.089,
-        "paddingRight": 0.002
+        "paddingBottom": 0.004,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.004
       },
       "leadingBlanks": 3,
       "firstCellDate": "2026-04-01",
@@ -86,15 +86,15 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.034,
-        "y": 0.31,
-        "width": 0.458,
+        "x": 0.033,
+        "y": 0.316,
+        "width": 0.459,
         "height": 0.125
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
-        "paddingLeft": 0.089,
+        "paddingBottom": 0.004,
+        "paddingLeft": 0.09,
         "paddingRight": 0.004
       },
       "leadingBlanks": 5,
@@ -105,16 +105,16 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.034,
-        "y": 0.445,
-        "width": 0.458,
+        "x": 0.033,
+        "y": 0.452,
+        "width": 0.459,
         "height": 0.125
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
-        "paddingLeft": 0.091,
-        "paddingRight": 0.006
+        "paddingBottom": 0.004,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.004
       },
       "leadingBlanks": 0,
       "firstCellDate": "2026-05-31",
@@ -124,16 +124,16 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.034,
-        "y": 0.5788278574092148,
-        "width": 0.458,
-        "height": 0.126
+        "x": 0.033,
+        "y": 0.586,
+        "width": 0.459,
+        "height": 0.125
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
-        "paddingLeft": 0.09,
-        "paddingRight": 0.003
+        "paddingBottom": 0.004,
+        "paddingLeft": 0.088,
+        "paddingRight": 0.004
       },
       "leadingBlanks": 3,
       "firstCellDate": "2026-07-01",
@@ -143,15 +143,15 @@
       "imageId": "page1",
       "rowCount": 4,
       "monthBox": {
-        "x": 0.034,
-        "y": 0.715,
-        "width": 0.458,
+        "x": 0.033,
+        "y": 0.721,
+        "width": 0.459,
         "height": 0.1
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
-        "paddingLeft": 0.091,
+        "paddingBottom": 0.004,
+        "paddingLeft": 0.09,
         "paddingRight": 0.004
       },
       "leadingBlanks": 0,
@@ -162,16 +162,16 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.03387820579173486,
-        "y": 0.8255377136122569,
-        "width": 0.458,
-        "height": 0.125
+        "x": 0.033,
+        "y": 0.831,
+        "width": 0.459,
+        "height": 0.126
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
+        "paddingBottom": 0.004,
         "paddingLeft": 0.09,
-        "paddingRight": 0.002
+        "paddingRight": 0.004
       },
       "leadingBlanks": 0,
       "firstCellDate": "2026-08-30",
@@ -181,16 +181,16 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.51,
-        "y": 0.172,
-        "width": 0.456,
+        "x": 0.509,
+        "y": 0.179,
+        "width": 0.457,
         "height": 0.127
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
+        "paddingBottom": 0.004,
         "paddingLeft": 0.09,
-        "paddingRight": 0.002
+        "paddingRight": 0.004
       },
       "leadingBlanks": 4,
       "firstCellDate": "2026-10-01",
@@ -200,14 +200,14 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.51,
-        "y": 0.31,
-        "width": 0.456,
+        "x": 0.509,
+        "y": 0.316,
+        "width": 0.457,
         "height": 0.125
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
+        "paddingBottom": 0.004,
         "paddingLeft": 0.09,
         "paddingRight": 0.004
       },
@@ -219,16 +219,16 @@
       "imageId": "page1",
       "rowCount": 5,
       "monthBox": {
-        "x": 0.5097224428884898,
-        "y": 0.4452588020104412,
+        "x": 0.509,
+        "y": 0.452,
         "width": 0.457,
-        "height": 0.12492634060106067
+        "height": 0.125
       },
       "gridOffset": {
         "paddingTop": 0,
-        "paddingBottom": 0,
+        "paddingBottom": 0.004,
         "paddingLeft": 0.09,
-        "paddingRight": 0.006
+        "paddingRight": 0.004
       },
       "leadingBlanks": 2,
       "firstCellDate": "2026-12-01",
