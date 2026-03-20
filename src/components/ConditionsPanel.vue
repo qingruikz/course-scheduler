@@ -587,9 +587,23 @@ function deliveryMenuStyle(slotIdx: number): Record<string, string> {
   const el = slotDeliveryTriggerRefs.value[slotIdx];
   if (!el) return { visibility: "hidden" };
   const rect = el.getBoundingClientRect();
+  const menuHeightEstimate = 120;
+  const gap = 2;
+  const viewportPadding = 8;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const spaceAbove = rect.top;
+  const openUpward =
+    spaceBelow < menuHeightEstimate + viewportPadding &&
+    spaceAbove > spaceBelow;
+  const top = openUpward
+    ? Math.max(viewportPadding, rect.top - menuHeightEstimate - gap)
+    : Math.min(
+        window.innerHeight - menuHeightEstimate - viewportPadding,
+        rect.bottom + gap,
+      );
   return {
     position: "fixed",
-    top: `${rect.bottom + 2}px`,
+    top: `${top}px`,
     left: `${rect.left}px`,
   };
 }
