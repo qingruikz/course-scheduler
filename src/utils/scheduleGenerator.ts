@@ -149,6 +149,9 @@ export function generateSchedule(
 
   const startDate = parseDate(semesterPeriod[0]);
   const endDate = parseDate(semesterPeriod[1]);
+  const slotDebugKeys = classSlots.map(
+    (slot, index) => `slot${index + 1}-${DAY_NAMES_FULL[slot.dayOfWeek] ?? "不明"}`,
+  );
 
   const schedule: ScheduleItem[] = [];
   let classNumber = 0;
@@ -269,6 +272,40 @@ export function generateSchedule(
   schedule.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   if (classNumber < courseDays) {
+    const debugDetails: Record<string, string[]> = {};
+    for (let i = 0; i < classSlots.length; i++) {
+      const slot = classSlots[i]!;
+      const key = slotDebugKeys[i]!;
+      const lines: string[] = [];
+      let d = new Date(startDate);
+      while (d <= endDate && getDayOfWeek(d) !== slot.dayOfWeek) {
+        d.setDate(d.getDate() + 1);
+      }
+      while (d <= endDate) {
+        const holidayInfo = isHoliday(d, yearData);
+        const dateLabel = formatDateShort(d);
+        if (holidayInfo.isHoliday) {
+          lines.push(`${dateLabel}: NG（休講: ${holidayInfo.reason ?? "不明"}）`);
+        } else {
+          lines.push(`${dateLabel}: OK`);
+        }
+        d.setDate(d.getDate() + 7);
+      }
+      debugDetails[key] = lines;
+    }
+    console.group(
+      `[schedule-debug] insufficient class days: semester=${semester}, requested=${courseDays}, generated=${classNumber}`,
+    );
+    console.log(
+      `[schedule-debug] period=${formatDateShort(startDate)}..${formatDateShort(endDate)}`,
+    );
+    for (const [slotKey, lines] of Object.entries(debugDetails)) {
+      console.log(`[schedule-debug] ${slotKey}`);
+      for (const line of lines) {
+        console.log(`  ${line}`);
+      }
+    }
+    console.groupEnd();
     throw new ScheduleGenerationError(
       "授業日が不足しています。学期・授業回数・週の回数の設定をご確認ください。",
     );

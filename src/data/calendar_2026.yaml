@@ -112,7 +112,7 @@ events:
   - name: 文化の日
     type: national_holiday
     classes_held: false
-    date: 2026-11-13
+    date: 2026-11-03
   - name: 試験・補講
     type: academic
     classes_held: false
