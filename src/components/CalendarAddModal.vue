@@ -306,18 +306,18 @@
                 class="calendar-event-settings"
                 aria-labelledby="calendar-event-settings-heading"
               >
+                <h3
+                  id="calendar-event-settings-heading"
+                  class="calendar-event-settings-heading"
+                >
+                  カレンダーイベント設定
+                </h3>
                 <div class="calendar-event-settings-inner">
-                  <h3
-                    id="calendar-event-settings-heading"
-                    class="calendar-event-settings-heading"
-                  >
-                    カレンダーイベント設定
-                  </h3>
                   <div
                     class="form-group add-delivery-to-summary-row slot-od-add-switch slot-od-add-switch-intensive"
                   >
                     <span class="slot-od-add-switch-label"
-                      >タイトルに実施方法を追加</span
+                      >タイトルに実施方法を追加（任意）</span
                     >
                     <label class="toggle-switch">
                       <input
@@ -329,50 +329,52 @@
                     </label>
                   </div>
                   <div class="form-group reminder-group">
-                    <div class="reminder-row">
-                      <div class="reminder-select-group">
-                        <span class="reminder-label"
-                          >リマインド 1回目（必須）</span
+                    <span class="reminder-label">
+                      リマインド（任意）
+                      <span
+                        class="help-tooltip-icon"
+                        title="※ iOSカレンダーに追加すると、別途、端末の「デフォルトの通知時間」（通常1時間前）が自動的に追加されます。変更する場合はスマホ端末等で「設定 → アプリ → カレンダー → デフォルトの通知の時間」を調整してください。"
+                        aria-label="iOSカレンダーの通知仕様の説明"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
                         >
-                        <select
-                          v-model="reminder1Minutes"
-                          class="form-control reminder-select"
-                        >
-                          <option
-                            v-for="opt in reminderOptions"
-                            :key="opt.value"
-                            :value="opt.value"
-                          >
-                            {{ opt.label }}
-                          </option>
-                        </select>
-                      </div>
-                      <div class="reminder-select-group">
-                        <span class="reminder-label"
-                          >リマインド 2回目（任意）</span
-                        >
-                        <select
-                          v-model="reminder2Minutes"
-                          class="form-control reminder-select"
-                        >
-                          <option :value="null">なし</option>
-                          <option
-                            v-for="opt in reminderOptions"
-                            :key="opt.value"
-                            :value="opt.value"
-                          >
-                            {{ opt.label }}
-                          </option>
-                        </select>
-                      </div>
-                    </div>
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                          <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                      </span>
+                    </span>
+                    <select
+                      v-model="reminder1Minutes"
+                      class="form-control reminder-select"
+                    >
+                      <option
+                        v-for="opt in reminderOptions"
+                        :key="opt.value ?? 'none'"
+                        :value="opt.value"
+                      >
+                        {{ opt.label }}
+                      </option>
+                    </select>
                   </div>
                   <div class="form-group">
+                    <span class="reminder-label"
+                      >カレンダーイベントに表示するメモ（任意）</span
+                    >
                     <textarea
                       id="ics-custom-memo"
                       v-model="customMemo"
                       class="form-control memo-textarea"
-                      placeholder="カレンダーイベントに表示するメモ（空欄可）"
+                      placeholder="空欄可"
                       rows="3"
                     />
                   </div>
@@ -434,7 +436,9 @@
                 </select>
               </div>
               <div class="form-group">
-                <label for="calendar-custom-memo">メモ（任意）</label>
+                <label for="calendar-custom-memo" class="reminder-label"
+                  >メモ（任意）</label
+                >
                 <textarea
                   id="calendar-custom-memo"
                   v-model="calendarCustomMemo"
@@ -514,9 +518,8 @@
                 <dt>リマインド</dt>
                 <dd>
                   {{
-                    reminderLabel(
+                    reminderMinutesToLabel(
                       currentPayload.icsExportOptions.reminder1Minutes,
-                      currentPayload.icsExportOptions.reminder2Minutes,
                     )
                   }}
                 </dd>
@@ -875,6 +878,7 @@ const typeOptions: { value: CalendarEventType; label: string }[] = [
 ];
 
 const reminderOptions = [
+  { value: null, label: "なし" },
   { value: 5, label: "5分前" },
   { value: 15, label: "15分前" },
   { value: 30, label: "30分前" },
@@ -949,8 +953,7 @@ const subjectInputRef = ref<HTMLInputElement | null>(null);
 // Schedule form state
 const subjectName = ref("");
 const slots = ref<IcsSlot[]>([]);
-const reminder1Minutes = ref<number>(1440);
-const reminder2Minutes = ref<number | null>(null);
+const reminder1Minutes = ref<number | null>(1440);
 /** タイトル（SUMMARY）に実施形態を追加するか。デフォルトはスロットが全て同一形態なら false、混在なら true */
 const addDeliveryToSummary = ref(false);
 const customMemo = ref("");
@@ -1081,13 +1084,6 @@ function reminderMinutesToLabel(minutes: number | null | undefined): string {
   if (minutes == null || minutes <= 0) return "なし";
   const opt = reminderOptions.find((o) => o.value === minutes);
   return opt?.label ?? `${minutes}分前`;
-}
-
-function reminderLabel(r1: number, r2?: number | null): string {
-  const parts: string[] = [];
-  if (r1 != null && r1 > 0) parts.push(reminderMinutesToLabel(r1));
-  if (r2 != null && r2 > 0) parts.push(reminderMinutesToLabel(r2));
-  return parts.length ? parts.join("、") : "なし";
 }
 
 const CALENDAR_EVENT_TYPE_LABELS: Record<string, string> = {
@@ -1229,7 +1225,6 @@ function buildPayload(): IcsPayload | null {
         dateStr: s.dateStr,
       })),
       reminder1Minutes: reminder1Minutes.value,
-      reminder2Minutes: reminder2Minutes.value ?? undefined,
       addDeliveryToSummary: addDeliveryToSummary.value,
       customMemo: customMemo.value.trim() || undefined,
     };
@@ -1411,7 +1406,6 @@ watch(
             });
           }
           reminder1Minutes.value = opts.reminder1Minutes ?? 1440;
-          reminder2Minutes.value = opts.reminder2Minutes ?? null;
           addDeliveryToSummary.value =
             opts.addDeliveryToSummary ?? !allSameDeliveryType(slots.value);
           customMemo.value = opts.customMemo ?? "";
@@ -1419,7 +1413,6 @@ watch(
           initSlots();
           subjectName.value = props.initialSubjectName?.trim() ?? "";
           reminder1Minutes.value = 1440;
-          reminder2Minutes.value = null;
           addDeliveryToSummary.value = !allSameDeliveryType(slots.value);
           customMemo.value = "";
           if (isIntensive && opts?.slots?.length && slots.value.length) {
@@ -1453,7 +1446,6 @@ watch(
             });
             subjectName.value = opts.subjectName ?? subjectName.value;
             reminder1Minutes.value = opts.reminder1Minutes ?? 1440;
-            reminder2Minutes.value = opts.reminder2Minutes ?? null;
             addDeliveryToSummary.value =
               opts.addDeliveryToSummary ?? !allSameDeliveryType(slots.value);
             customMemo.value = opts.customMemo ?? "";
@@ -1776,22 +1768,26 @@ watch(
   word-break: break-word;
 }
 
-.reminder-row {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.reminder-select-group {
-  flex: 1;
-  min-width: 140px;
-}
-
 .reminder-label {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  font-weight: normal;
   font-size: 12px;
   color: #666;
   margin-bottom: 4px;
+  line-height: 1;
+}
+
+.help-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  color: #666;
+  cursor: help;
+  vertical-align: middle;
 }
 
 .checkbox-group {

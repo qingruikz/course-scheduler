@@ -267,12 +267,9 @@ export function buildScheduleIcsBlob(
     "CALSCALE:GREGORIAN",
   ];
 
-  const reminders = [
-    options.reminder1Minutes,
-    options.reminder2Minutes != null && options.reminder2Minutes !== undefined
-      ? options.reminder2Minutes
-      : null,
-  ].filter((m): m is number => typeof m === "number");
+  const reminders = [options.reminder1Minutes].filter(
+    (m): m is number => typeof m === "number",
+  );
   const customMemo = options.customMemo?.trim();
 
   if (isIntensive) {

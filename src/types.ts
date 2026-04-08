@@ -104,10 +104,8 @@ export interface IcsSlot {
 export interface IcsExportOptions {
   subjectName: string;
   slots: IcsSlot[];
-  /** 1回目のリマインド（分）。5, 15, 30, 60, 120, 1440, 2880 */
-  reminder1Minutes: number;
-  /** 2回目のリマインド（分）。null は「なし」 */
-  reminder2Minutes?: number | null;
+  /** 1回目のリマインド（分）。5, 15, 30, 60, 120, 1440, 2880 。null はリマインドなし */
+  reminder1Minutes: number | null;
   /** true のとき SUMMARY に実施形態を付与（例: 初年次ゼミ（対面））。未設定時はスロットの実施形態が全て同一なら false、混在なら true で初期化 */
   addDeliveryToSummary?: boolean;
   /** 説明（講義情報）の後に追記するメモ。空でない場合のみ DESCRIPTION に改行2つ挟んで追加 */
