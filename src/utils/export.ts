@@ -235,8 +235,12 @@ function slotLocationPart(slot: IcsSlot): string {
   return `（${dayShort}${periodStr}）${location}`;
 }
 
-/** VALARM の TRIGGER 文字列（開始前）。iOS 互換のため常に分単位で出力 */
+/** VALARM の TRIGGER 文字列（開始前） */
 function alarmTrigger(minutes: number): string {
+  if (minutes >= 1440) {
+    const days = Math.round(minutes / 1440);
+    return `-P${days}D`;
+  }
   return `-PT${minutes}M`;
 }
 
@@ -311,7 +315,6 @@ export function buildScheduleIcsBlob(
       for (const min of reminders) {
         lines.push("BEGIN:VALARM");
         lines.push("ACTION:DISPLAY");
-        lines.push("DESCRIPTION:Reminder");
         lines.push(`TRIGGER:${alarmTrigger(min)}`);
         lines.push("END:VALARM");
       }
@@ -384,7 +387,6 @@ export function buildScheduleIcsBlob(
       for (const min of reminders) {
         lines.push("BEGIN:VALARM");
         lines.push("ACTION:DISPLAY");
-        lines.push("DESCRIPTION:Reminder");
         lines.push(`TRIGGER:${alarmTrigger(min)}`);
         lines.push("END:VALARM");
       }
@@ -489,7 +491,6 @@ export function buildCalendarIcsBlob(
       if (options.reminderMinutes != null && options.reminderMinutes > 0) {
         lines.push("BEGIN:VALARM");
         lines.push("ACTION:DISPLAY");
-        lines.push("DESCRIPTION:Reminder");
         lines.push(`TRIGGER:${alarmTrigger(options.reminderMinutes)}`);
         lines.push("END:VALARM");
       }
@@ -510,7 +511,6 @@ export function buildCalendarIcsBlob(
         if (options.reminderMinutes != null && options.reminderMinutes > 0) {
           lines.push("BEGIN:VALARM");
           lines.push("ACTION:DISPLAY");
-          lines.push("DESCRIPTION:Reminder");
           lines.push(`TRIGGER:${alarmTrigger(options.reminderMinutes)}`);
           lines.push("END:VALARM");
         }
