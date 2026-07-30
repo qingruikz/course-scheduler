@@ -1,5 +1,7 @@
 # 大学授業スケジュールジェネレーター
 
+**デモサイト**: [https://qingruikz.github.io/course-scheduler/](https://qingruikz.github.io/course-scheduler/)
+
 大学の授業スケジュールを自動生成する Web アプリケーションです。年度、学期、授業回数、曜日、実施方法などの条件を設定することで、休日を考慮した授業日程を自動生成します。
 
 ## 機能
