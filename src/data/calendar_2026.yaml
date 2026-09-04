@@ -10,7 +10,7 @@ semesters:
   夏期集中授業期間: { start: 2026-08-04, end: 2026-09-17 }
   3学期: { start: 2026-09-24, end: 2026-11-17 }
   4学期: { start: 2026-11-24, end: 2027-01-26 }
-  春季集中授業期間: { start: 2027-01-29, end: 2027-02-03 }
+  春期集中授業期間: { start: 2027-01-29, end: 2027-02-03 }
   前期: { start: 2026-04-16, end: 2026-07-31 }
   後期: { start: 2026-09-24, end: 2027-01-26 }
 
@@ -73,7 +73,7 @@ events:
     type: academic
     classes_held: false
     date: 2026-08-03
-  - name: 夏季一斉休業
+  - name: 夏期一斉休業
     type: vacation
     classes_held: false
     start: 2026-08-11

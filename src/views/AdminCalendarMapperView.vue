@@ -258,8 +258,10 @@
                 v-model.number="selectedMonthLayout.rowCount"
                 class="form-control"
               >
+                <option :value="3">3</option>
                 <option :value="4">4</option>
                 <option :value="5">5</option>
+                <option :value="6">6</option>
               </select>
             </label>
             <button
@@ -688,7 +690,13 @@ function normalizeMonthLayout(
   const gridOffset = raw.gridOffset as Partial<GridOffset> | undefined;
   const ml: MonthLayout = {
     imageId: (raw.imageId as string) ?? defaultImageId,
-    rowCount: raw.rowCount === 4 || raw.rowCount === 5 ? raw.rowCount : 5,
+    rowCount:
+      raw.rowCount === 3 ||
+      raw.rowCount === 4 ||
+      raw.rowCount === 5 ||
+      raw.rowCount === 6
+        ? raw.rowCount
+        : 5,
     monthBox: monthBox
       ? {
           x: Number(monthBox.x) ?? 0,

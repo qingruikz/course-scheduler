@@ -67,7 +67,7 @@
           "
         >
           <option v-for="year in availableYears" :key="year" :value="year">
-            {{ formatAcademicYear(year) }}
+            {{ formatAcademicYear(year, previewYears.includes(year)) }}
           </option>
         </select>
         <p class="calendar-info" v-if="calendarUpdateDate">
@@ -418,6 +418,7 @@ import { formatAcademicYear } from "../utils/japaneseEra";
 
 const props = defineProps<{
   availableYears: number[];
+  previewYears: number[];
   yearData: YearData | null;
   createdAt: string;
   updatedAt?: string;

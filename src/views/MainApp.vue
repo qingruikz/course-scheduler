@@ -2,6 +2,7 @@
   <div class="app">
     <AppHeader
       :selected-year="storeSelectedYear ?? null"
+      :is-preview="selectedYearIsPreview"
       @add-calendar="onAdminMenuAddCalendar"
       @official-calendar="onAdminMenuOfficialCalendar"
       @calendar-mapper="onAdminMenuCalendarMapper"
@@ -10,6 +11,7 @@
     <div class="main-container">
       <ConditionsPanel
         :available-years="availableYears"
+        :preview-years="previewCalendarYears"
         :year-data="currentYearData"
         :created-at="createdAt"
         :updated-at="updatedAt"
@@ -271,7 +273,10 @@ import { decodePayload } from "../utils/icsPayload";
 import { downloadIcsFromPayload } from "../utils/icsDownload";
 import type { IcsExportOptions, CalendarEventsIcsOptions } from "../types";
 import { convertYamlToCalendarData } from "../utils/yamlConverter";
-import { loadCalendarLayout } from "../utils/calendarLayoutLoader";
+import {
+  isPreviewCalendarLayoutYear,
+  loadCalendarLayout,
+} from "../utils/calendarLayoutLoader";
 import type { CalendarLayout } from "../types";
 
 const route = useRoute();
@@ -286,6 +291,19 @@ const {
 const calendarData = ref<CalendarData | null>(null);
 const currentYearData = ref<YearData | null>(null);
 const availableYears = ref<number[]>([]);
+const previewCalendarDataYears = ref<number[]>([]);
+const previewCalendarYears = computed(() =>
+  availableYears.value.filter(
+    (year) =>
+      previewCalendarDataYears.value.includes(year) ||
+      isPreviewCalendarLayoutYear(year),
+  ),
+);
+const selectedYearIsPreview = computed(
+  () =>
+    storeSelectedYear.value != null &&
+    previewCalendarYears.value.includes(storeSelectedYear.value),
+);
 const createdAt = ref<string>("");
 const updatedAt = ref<string>("");
 const showCalendarAddModal = ref(false);
@@ -461,17 +479,34 @@ const intensiveAddModalDate = ref<Date | null>(null);
 
 async function loadCalendarData() {
   try {
-    // data フォルダ内のすべての calendar_*.yaml ファイルを自動的にインポート
-    // import.meta.glob は Vite の機能で、パターンに一致するすべてのファイルを動的にインポート
+    // 正式版を優先し、ない年度だけ calendar_YYYY_preview.yaml を使用する
     const calendarModules = import.meta.glob<{ default: any }>(
       "../data/calendar_*.yaml",
       { eager: true },
     );
 
-    // すべての YAML データを配列として取得（ファイル名から年度を抽出する必要はない）
-    const yamlDataArray = Object.values(calendarModules).map(
-      (module) => module.default,
-    );
+    const selectedModules = new Map<
+      number,
+      { data: any; preview: boolean }
+    >();
+    for (const [path, module] of Object.entries(calendarModules)) {
+      const filenameMatch = path.match(
+        /[\\/]calendar_\d{4}(_preview)?\.yaml$/,
+      );
+      if (!filenameMatch) continue;
+      const year = Number(module.default?.year);
+      if (!Number.isInteger(year)) continue;
+      const preview = Boolean(filenameMatch[1]);
+      const selected = selectedModules.get(year);
+      if (!selected || (selected.preview && !preview)) {
+        selectedModules.set(year, { data: module.default, preview });
+      }
+    }
+    const selectedCalendarModules = [...selectedModules.entries()];
+    const yamlDataArray = selectedCalendarModules.map(([, value]) => value.data);
+    previewCalendarDataYears.value = selectedCalendarModules
+      .filter(([, value]) => value.preview)
+      .map(([year]) => year);
 
     // YAML データを CalendarData 形式に変換（年度は YAML データ内の year フィールドから読み込まれる）
     calendarData.value = convertYamlToCalendarData(yamlDataArray);
@@ -480,7 +515,7 @@ async function loadCalendarData() {
       // 利用可能な年度を計算
       availableYears.value = Object.keys(calendarData.value.years)
         .map((y) => parseInt(y))
-        .sort((a, b) => a - b);
+        .sort((a, b) => b - a);
 
       // 作成日・更新日を取得
       createdAt.value = calendarData.value.createdAt || "";
@@ -525,7 +560,9 @@ async function loadCalendarLayoutForYear(year: number) {
   calendarLayout.value = null;
   if (!year) return;
   const layout = await loadCalendarLayout(year);
-  if (storeSelectedYear.value === year) calendarLayout.value = layout;
+  if (storeSelectedYear.value === year) {
+    calendarLayout.value = layout;
+  }
 }
 
 const showRemoveSubjectConfirm = ref(false);

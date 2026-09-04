@@ -1,0 +1,288 @@
+# events[].type は次のいずれか: national_holiday | school_holiday | academic | event | vacation
+# events[].classes_held: true=授業実施日, false=休講
+
+year: 2027
+created_at: 2026-09-04
+updated_at: 2026-09-04
+
+semesters:
+  1学期: { start: 2027-04-16, end: 2027-06-09 }
+  2学期: { start: 2027-06-14, end: 2027-07-31 }
+  夏期集中授業期間: { start: 2027-08-04, end: 2027-09-14 }
+  3学期: { start: 2027-09-16, end: 2027-11-10 }
+  4学期: { start: 2027-11-16, end: 2028-01-25 }
+  春期集中授業期間: { start: 2028-01-28, end: 2028-02-03 }
+  前期: { start: 2027-04-16, end: 2027-07-31 }
+  後期: { start: 2027-09-16, end: 2028-01-25 }
+
+events:
+  - name: 入学式
+    type: event
+    classes_held: false
+    date: 2027-04-05
+
+  - name: 履修登録（1年生）
+    type: academic
+    classes_held: false
+    start: 2027-04-07
+    end: 2027-04-08
+
+  - name: 履修登録予備日
+    type: academic
+    classes_held: false
+    date: 2027-04-12
+
+  - name: 春休み
+    type: vacation
+    classes_held: false
+    start: 2027-04-01
+    end: 2027-04-15
+
+  - name: 訂正登録
+    type: academic
+    classes_held: true
+    start: 2027-04-23
+    end: 2027-04-24
+
+  - name: 訂正登録
+    type: academic
+    classes_held: false
+    date: 2027-04-25
+
+  - name: 訂正登録
+    type: academic
+    classes_held: true
+    date: 2027-04-26
+
+  # --- 春期 ---
+  - name: 昭和の日
+    type: national_holiday
+    classes_held: true
+    date: 2027-04-29
+
+  - name: 昭和の日（4/29）の振替休講日
+    type: school_holiday
+    classes_held: false
+    date: 2027-05-01
+
+  - name: 憲法記念日
+    type: national_holiday
+    classes_held: false
+    date: 2027-05-03
+
+  - name: みどりの日
+    type: national_holiday
+    classes_held: false
+    date: 2027-05-04
+
+  - name: こどもの日
+    type: national_holiday
+    classes_held: false
+    date: 2027-05-05
+
+  - name: 創立記念日（同慶節）
+    type: school_holiday
+    classes_held: false
+    date: 2027-05-21
+
+  # --- 夏期 ---
+  - name: 試験・補講
+    type: academic
+    classes_held: false
+    start: 2027-06-10
+    end: 2027-06-11
+
+  - name: 海の日（7/19）の振替休講日
+    type: school_holiday
+    classes_held: false
+    date: 2027-06-12
+
+  - name: 訂正登録
+    type: academic
+    classes_held: true
+    start: 2027-06-21
+    end: 2027-06-23
+
+  - name: 海の日
+    type: national_holiday
+    classes_held: true
+    date: 2027-07-19
+
+  - name: 試験・補講
+    type: academic
+    classes_held: false
+    start: 2027-08-02
+    end: 2027-08-03
+
+  - name: 山の日
+    type: national_holiday
+    classes_held: false
+    date: 2027-08-11
+
+  - name: 夏期一斉休業
+    type: vacation
+    classes_held: false
+    start: 2027-08-11
+    end: 2027-08-17
+
+  # --- 秋期 ---
+  - name: 履修登録（1年生）
+    type: academic
+    classes_held: false
+    start: 2027-09-06
+    end: 2027-09-07
+
+  - name: 予備登録
+    type: academic
+    classes_held: false
+    date: 2027-09-10
+
+  - name: 敬老の日
+    type: national_holiday
+    classes_held: true
+    date: 2027-09-20
+
+  - name: 秋分の日
+    type: national_holiday
+    classes_held: false
+    date: 2027-09-23
+
+  - name: 訂正登録
+    type: academic
+    classes_held: true
+    start: 2027-09-24
+    end: 2027-09-25
+
+  - name: 訂正登録
+    type: academic
+    classes_held: true
+    start: 2027-09-27
+    end: 2027-09-28
+
+  - name: 摩耶祭準備
+    type: event
+    classes_held: false
+    date: 2027-10-08
+
+  - name: 摩耶祭
+    type: event
+    classes_held: false
+    start: 2027-10-09
+    end: 2027-10-10
+
+  - name: スポーツの日・摩耶祭片付け
+    type: event
+    classes_held: false
+    date: 2027-10-11
+
+  - name: 文化の日
+    type: national_holiday
+    classes_held: false
+    date: 2027-11-03
+
+  - name: 試験・補講
+    type: academic
+    classes_held: false
+    date: 2027-11-09
+
+  - name: 試験・補講
+    type: academic
+    classes_held: false
+    date: 2027-11-11
+
+  - name: 黎明祭準備
+    type: event
+    classes_held: false
+    date: 2027-11-12
+
+  - name: 黎明祭
+    type: event
+    classes_held: false
+    start: 2027-11-13
+    end: 2027-11-14
+
+  - name: 黎明祭片付け
+    type: event
+    classes_held: false
+    date: 2027-11-15
+
+  - name: 勤労感謝の日
+    type: national_holiday
+    classes_held: false
+    date: 2027-11-23
+
+  - name: 訂正登録
+    type: academic
+    classes_held: true
+    start: 2027-11-24
+    end: 2027-11-26
+
+  # --- 冬期 ---
+  - name: 敬老の日（9/20）の振替休講日
+    type: school_holiday
+    classes_held: false
+    date: 2027-12-28
+
+  - name: 冬期一斉休業
+    type: vacation
+    classes_held: false
+    start: 2027-12-29
+    end: 2028-01-05
+
+  - name: 元日
+    type: national_holiday
+    classes_held: false
+    date: 2028-01-01
+
+  - name: 授業回調整（休講日）
+    type: academic
+    classes_held: false
+    date: 2028-01-06
+
+  - name: 成人の日
+    type: national_holiday
+    classes_held: false
+    date: 2028-01-10
+
+  - name: 大学入学共通テスト準備
+    type: academic
+    classes_held: false
+    date: 2028-01-14
+
+  - name: 大学入学共通テスト
+    type: academic
+    classes_held: false
+    start: 2028-01-15
+    end: 2028-01-16
+
+  - name: 試験・補講
+    type: academic
+    classes_held: false
+    start: 2028-01-26
+    end: 2028-01-27
+
+  - name: 春休み
+    type: vacation
+    classes_held: false
+    start: 2028-02-04
+    end: 2028-03-31
+
+  - name: 建国記念の日
+    type: national_holiday
+    classes_held: false
+    date: 2028-02-11
+
+  - name: 天皇誕生日
+    type: national_holiday
+    classes_held: false
+    date: 2028-02-23
+
+  - name: 卒業式・修了式
+    type: event
+    classes_held: false
+    date: 2028-03-14
+
+  - name: 春分の日
+    type: national_holiday
+    classes_held: false
+    date: 2028-03-20

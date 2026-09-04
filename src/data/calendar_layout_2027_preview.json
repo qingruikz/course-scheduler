@@ -1,0 +1,238 @@
+{
+  "year": 2027,
+  "academicYear": true,
+  "_note": "年度 2027（2027年4月–2028年3月）。月キー 4–12 は 2027年、1–3 は 2028年。",
+  "images": {
+    "page1": "calendar_2027_preview.png"
+  },
+  "months": {
+    "1": {
+      "imageId": "page1",
+      "rowCount": 6,
+      "monthBox": {
+        "x": 0.509,
+        "y": 0.573,
+        "width": 0.442,
+        "height": 0.146
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.003
+      },
+      "leadingBlanks": 6,
+      "firstCellDate": "2028-01-01",
+      "trailingBlanks": 5
+    },
+    "2": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.509,
+        "y": 0.724,
+        "width": 0.442,
+        "height": 0.12
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.002
+      },
+      "leadingBlanks": 2,
+      "firstCellDate": "2028-02-01",
+      "trailingBlanks": 4
+    },
+    "3": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.509,
+        "y": 0.849,
+        "width": 0.442,
+        "height": 0.118
+      },
+      "gridOffset": {
+        "paddingTop": 0.015,
+        "paddingBottom": 0,
+        "paddingLeft": 0.089,
+        "paddingRight": 0.005
+      },
+      "leadingBlanks": 3,
+      "firstCellDate": "2028-03-01",
+      "trailingBlanks": 1
+    },
+    "4": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.049,
+        "y": 0.181,
+        "width": 0.443,
+        "height": 0.125
+      },
+      "gridOffset": {
+        "paddingTop": 0.011,
+        "paddingBottom": 0,
+        "paddingLeft": 0.089,
+        "paddingRight": 0.002
+      },
+      "leadingBlanks": 4,
+      "firstCellDate": "2027-04-01",
+      "trailingBlanks": 0
+    },
+    "5": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.049,
+        "y": 0.316,
+        "width": 0.442,
+        "height": 0.123
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.089,
+        "paddingRight": 0.004
+      },
+      "leadingBlanks": 0,
+      "firstCellDate": "2027-05-02",
+      "trailingBlanks": 5
+    },
+    "6": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.049,
+        "y": 0.443,
+        "width": 0.443,
+        "height": 0.122
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.091,
+        "paddingRight": 0.006
+      },
+      "leadingBlanks": 2,
+      "firstCellDate": "2027-06-01",
+      "trailingBlanks": 3
+    },
+    "7": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.049,
+        "y": 0.573,
+        "width": 0.443,
+        "height": 0.122
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.003
+      },
+      "leadingBlanks": 4,
+      "firstCellDate": "2027-07-01",
+      "trailingBlanks": 0
+    },
+    "8": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.049,
+        "y": 0.724,
+        "width": 0.443,
+        "height": 0.121
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.091,
+        "paddingRight": 0.004
+      },
+      "leadingBlanks": 0,
+      "firstCellDate": "2027-08-01",
+      "trailingBlanks": 4
+    },
+    "9": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.05,
+        "y": 0.849,
+        "width": 0.441,
+        "height": 0.117
+      },
+      "gridOffset": {
+        "paddingTop": 0.007,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.002
+      },
+      "leadingBlanks": 3,
+      "firstCellDate": "2027-09-01",
+      "trailingBlanks": 2
+    },
+    "10": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.509,
+        "y": 0.181,
+        "width": 0.442,
+        "height": 0.125
+      },
+      "gridOffset": {
+        "paddingTop": 0.009,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.002
+      },
+      "leadingBlanks": 5,
+      "firstCellDate": "2027-10-01",
+      "trailingBlanks": 0
+    },
+    "11": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.509,
+        "y": 0.316,
+        "width": 0.442,
+        "height": 0.122
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.004
+      },
+      "leadingBlanks": 0,
+      "firstCellDate": "2027-10-31",
+      "trailingBlanks": 4
+    },
+    "12": {
+      "imageId": "page1",
+      "rowCount": 5,
+      "monthBox": {
+        "x": 0.509,
+        "y": 0.443,
+        "width": 0.442,
+        "height": 0.122
+      },
+      "gridOffset": {
+        "paddingTop": 0,
+        "paddingBottom": 0,
+        "paddingLeft": 0.09,
+        "paddingRight": 0.006
+      },
+      "leadingBlanks": 3,
+      "firstCellDate": "2027-12-01",
+      "trailingBlanks": 1
+    }
+  }
+}

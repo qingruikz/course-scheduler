@@ -217,7 +217,7 @@ export interface GridOffset {
 
 export interface MonthLayout {
   imageId: string;
-  rowCount: 4 | 5;
+  rowCount: 3 | 4 | 5 | 6;
   monthBox: MonthBox;
   gridOffset: GridOffset;
   /** 月初行の先頭にある空白セル数（0–6）。学年暦背景で日付を決める用。未指定時は firstDayOfWeek で算出。 */

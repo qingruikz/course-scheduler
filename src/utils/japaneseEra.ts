@@ -33,9 +33,10 @@ export function getJapaneseEra(year: number): { era: string; year: number } {
 /**
  * 年度の表示文字列を生成
  * @param year 西暦年
+ * @param preview preview 版の公式カレンダー配置を使用しているか
  * @returns 例: "2025(令和7)年度"
  */
-export function formatAcademicYear(year: number): string {
+export function formatAcademicYear(year: number, preview = false): string {
   const { era, year: eraYear } = getJapaneseEra(year);
-  return `${year}(${era}${eraYear})年度`;
+  return `${year}(${era}${eraYear})年度${preview ? "(preview)" : ""}`;
 }

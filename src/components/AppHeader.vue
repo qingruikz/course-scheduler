@@ -40,7 +40,7 @@
       <div class="header-left">
         <h1>大学授業スケジュールジェネレーター</h1>
         <span class="academic-year" v-if="selectedYear">
-          {{ formatAcademicYear(selectedYear) }}
+          {{ formatAcademicYear(selectedYear, isPreview) }}
         </span>
       </div>
     </div>
@@ -53,6 +53,7 @@ import { formatAcademicYear } from "../utils/japaneseEra";
 
 defineProps<{
   selectedYear: number | null;
+  isPreview?: boolean;
 }>();
 
 const emit = defineEmits<{
